@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { TimeSlot } from '../types/index.js';
+import WebSocket from 'ws';
 
 dotenv.config({ path: '../.env' });
 
