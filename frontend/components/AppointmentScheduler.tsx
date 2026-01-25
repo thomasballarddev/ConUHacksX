@@ -3,12 +3,42 @@ import React, { useState } from 'react';
 interface AppointmentSchedulerProps {
   onClose?: () => void;
   onConfirm?: (details: { day: string; date: string; time: string }) => void;
+  availableSlots?: { day: string; date: string; time: string }[];
 }
 
-const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm }) => {
+const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm, availableSlots = [] }) => {
   const [selectedSlot, setSelectedSlot] = useState<{ day: string; date: string; time: string } | null>(null);
 
-  const days = [
+  // If availableSlots are provided, use them to build the view
+  const hasDynamicSlots = availableSlots && availableSlots.length > 0;
+
+  const dynamicSlotsMap: Record<string, string[]> = {};
+  const dynamicDaysSet = new Set<string>();
+  const dynamicDays: { day: string; date: string }[] = [];
+
+  if (hasDynamicSlots) {
+    availableSlots.forEach(slot => {
+      if (!dynamicSlotsMap[slot.day]) {
+         dynamicSlotsMap[slot.day] = [];
+         // Add to days list if new
+         if (!dynamicDaysSet.has(slot.day)) {
+            dynamicDaysSet.add(slot.day);
+            dynamicDays.push({ day: slot.day, date: slot.date });
+         }
+      }
+      if (!dynamicSlotsMap[slot.day].includes(slot.time)) {
+        dynamicSlotsMap[slot.day].push(slot.time);
+      }
+    });
+
+    // Sort days based on standard week order if needed, or just keep arrival order
+    // Simple sort for demo:
+    const weekOrder = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    dynamicDays.sort((a, b) => weekOrder.indexOf(a.day) - weekOrder.indexOf(b.day));
+  }
+
+  // Fallback / Default Data
+  const defaultDays = [
     { day: 'SAT', date: '25' },
     { day: 'SUN', date: '26' },
     { day: 'MON', date: '27' },
@@ -18,7 +48,7 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
     { day: 'FRI', date: '31' },
   ];
 
-  const slots: Record<string, string[]> = {
+  const defaultSlots: Record<string, string[]> = {
     'SAT': ['10:00 AM', '11:30 AM'],
     'SUN': ['09:00 AM', '01:00 PM'],
     'MON': ['09:00 AM', '10:30 AM', '02:00 PM'],
@@ -27,6 +57,9 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
     'THU': ['09:00 AM', '11:00 AM', '02:30 PM', '04:00 PM'],
     'FRI': ['09:15 AM', '03:00 PM', '05:00 PM'],
   };
+
+  const days = hasDynamicSlots ? dynamicDays : defaultDays;
+  const slots = hasDynamicSlots ? dynamicSlotsMap : defaultSlots;
 
   const handleSelectSlot = (day: string, date: string, time: string) => {
     setSelectedSlot({ day, date, time });
