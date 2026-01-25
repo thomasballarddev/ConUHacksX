@@ -1,6 +1,7 @@
-import React from 'react';
-import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
+import React, { useRef, useCallback } from 'react';
+import Map, { Marker, NavigationControl, MapRef } from "react-map-gl/mapbox";
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { useLocation } from '../contexts/LocationContext';
 
 interface LocationWidgetProps {
   onClose?: () => void;
@@ -8,12 +9,27 @@ interface LocationWidgetProps {
 }
 
 const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) => {
+  const { userLocation } = useLocation();
+  const mapRef = useRef<MapRef>(null);
+  
+  // Default to San Francisco if no user location
+  const mapCenter = userLocation || { longitude: -122.41669, latitude: 37.7853 };
+
+  // Force map resize when it loads
+  const onMapLoad = useCallback(() => {
+    if (mapRef.current) {
+      mapRef.current.resize();
+    }
+  }, []);
+
   return (
     <div className="h-full bg-soft-cream flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 w-full">
       <div className="p-6 border-b border-black/5 flex justify-between items-center bg-white/50 backdrop-blur-sm flex-shrink-0">
         <div>
           <h2 className="serif-font text-3xl text-primary">Find Nearby Doctors</h2>
-          <p className="text-gray-500 text-xs font-medium mt-1">Showing clinics within 5 miles</p>
+          <p className="text-gray-500 text-xs font-medium mt-1">
+            {userLocation ? 'Showing clinics near your location' : 'Showing clinics within 5 miles'}
+          </p>
         </div>
         {onClose && (
           <button onClick={onClose} className="size-8 rounded-full bg-white border border-black/5 flex items-center justify-center hover:bg-black hover:text-white transition-all">
@@ -26,28 +42,33 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
         {/* Map Container */}
         <div className="min-h-[300px] h-1/2 bg-gray-100 relative flex-shrink-0">
           <Map
+            ref={mapRef}
+            key={`${mapCenter.longitude}-${mapCenter.latitude}`}
             initialViewState={{
-              longitude: -122.41669,
-              latitude: 37.7853,
-              zoom: 13
+              longitude: mapCenter.longitude,
+              latitude: mapCenter.latitude,
+              zoom: 14
             }}
             style={{width: '100%', height: '100%'}}
-            mapStyle="mapbox://styles/mapbox/light-v11"
+            mapStyle="mapbox://styles/mapbox/streets-v12"
             mapboxAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
+            onLoad={onMapLoad}
+            reuseMaps
           >
             <NavigationControl position="bottom-right" />
-            <Marker longitude={-122.41669} latitude={37.7853} anchor="bottom">
+            {/* User's location marker */}
+            <Marker longitude={mapCenter.longitude} latitude={mapCenter.latitude} anchor="bottom">
               <div className="relative">
-                 <div className="size-6 bg-primary rounded-full border-4 border-white shadow-2xl pulse-red"></div>
+                <div className="size-6 bg-primary rounded-full border-4 border-white shadow-2xl pulse-red"></div>
               </div>
             </Marker>
             
-            {/* Added markers for the list items for better context */}
-            <Marker longitude={-122.4000} latitude={37.7800} anchor="bottom">
-                <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
+            {/* Nearby clinics markers */}
+            <Marker longitude={mapCenter.longitude + 0.008} latitude={mapCenter.latitude - 0.005} anchor="bottom">
+              <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
             </Marker>
-             <Marker longitude={-122.4300} latitude={37.7900} anchor="bottom">
-                <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
+            <Marker longitude={mapCenter.longitude - 0.012} latitude={mapCenter.latitude + 0.008} anchor="bottom">
+              <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
             </Marker>
           </Map>
         </div>

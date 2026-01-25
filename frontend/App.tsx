@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { LocationProvider } from './contexts/LocationContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -29,17 +30,19 @@ const App: React.FC = () => {
   };
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
-        <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
-        <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
-        <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
-        <Route path="/booking" element={<ProtectedLayout><Booking /></ProtectedLayout>} />
-        <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+    <LocationProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
+          <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
+          <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
+          <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
+          <Route path="/booking" element={<ProtectedLayout><Booking /></ProtectedLayout>} />
+          <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </LocationProvider>
   );
 };
 

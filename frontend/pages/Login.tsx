@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from '../contexts/LocationContext';
 
 interface LoginProps {
   onLogin: () => void;
@@ -8,12 +9,18 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const navigate = useNavigate();
+  const { requestLocation, isLoading } = useLocation();
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Immediate authentication bypass as requested
+    setIsRequestingLocation(true);
+    
+    // Request location permission
+    await requestLocation();
+    
+    setIsRequestingLocation(false);
     onLogin();
-    // Direct move to the chat page
     navigate('/chat');
   };
 
@@ -74,10 +81,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
             </div>
             <button 
-              className="w-full bg-primary text-white font-bold py-4 rounded-full hover:bg-black transition-all transform active:scale-[0.99] mt-2 text-[15px] shadow-lg shadow-black/10" 
+              className="w-full bg-primary text-white font-bold py-4 rounded-full hover:bg-black transition-all transform active:scale-[0.99] mt-2 text-[15px] shadow-lg shadow-black/10 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2" 
               type="submit"
+              disabled={isRequestingLocation}
             >
-              Sign In
+              {isRequestingLocation ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+                  Getting your location...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
