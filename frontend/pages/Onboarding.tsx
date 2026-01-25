@@ -136,18 +136,28 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const handleComplete = async () => {
     setShowConfetti(true);
-    
+
+    console.log('[Onboarding] handleComplete called. User:', user?.uid || 'NULL');
+    console.log('[Onboarding] Profile data:', JSON.stringify(profile, null, 2));
+
     // Save profile to Firestore
     if (user) {
       try {
+        console.log('[Onboarding] Attempting to save profile for user:', user.uid);
         await saveUserProfile(user.uid, {
           ...profile,
           createdAt: new Date().toISOString()
         });
-        console.log('[Onboarding] Profile saved to Firestore');
+        console.log('[Onboarding] ✅ Profile saved to Firestore successfully!');
+        console.log('[Onboarding] Check Firestore at: users/' + user.uid + '/profile/data');
       } catch (error) {
-        console.error('Failed to save profile to Firestore:', error);
+        console.error('[Onboarding] ❌ Failed to save profile to Firestore:', error);
+        // Show error to user but don't block navigation
+        alert('Warning: Failed to save your profile. Please try updating it later in settings.');
       }
+    } else {
+      console.error('[Onboarding] ❌ Cannot save - user is null! Check AuthProvider.');
+      alert('Warning: Not signed in. Please sign in and complete onboarding again.');
     }
 
     setTimeout(() => {

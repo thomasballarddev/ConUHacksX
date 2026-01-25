@@ -117,6 +117,8 @@ export interface UserProfile {
     height: string;
     weight: string;
   };
+  bloodType: string;
+  allergies: string[];
   medicalConditions: {
     conditions: string[];
     notes: string;
