@@ -50,18 +50,14 @@ export async function sendChatMessage(message: string, conversationId?: string):
 
     ws.onopen = () => {
       console.log('[ElevenLabs] Connected to Agent WS');
-      // Send the user's text message as user_audio_chunk with base64 text? 
-      // OR special "user_message" event?
-      // Based on ElevenLabs ConvAI protocol, for text input we might need:
-      // { "user_audio_chunk": base64EncodedAudio } for audio
-      // For text-only (chat mode), let's try: { "text": "Hello" }
-      // Or some agents accept: { "type": "user_message", "user_message": { "text": "Hello" } }
-      
-      // Trying the simple text approach first:
+      // ElevenLabs ConvAI protocol: send user text as 'user_message' type
       const payload = {
-        text: message,
-        try_trigger_generation: true
+        type: 'user_message',
+        user_message: {
+          text: message
+        }
       };
+      console.log('[ElevenLabs] Sending user message:', message);
       ws.send(JSON.stringify(payload));
     };
 
