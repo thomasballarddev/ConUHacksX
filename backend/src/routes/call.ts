@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger, emitAgentNeedsInput, emitAgentInputReceived } from '../services/websocket.js';
+import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger, emitAgentNeedsInput, emitAgentInputReceived, emitTranscriptUpdate } from '../services/websocket.js';
 import { initiateClinicCall, sendResponseToCall, getActiveCallStatus } from '../services/elevenlabs-call.js';
 import { getPatientSymptoms } from '../services/gemini.js';
 import { getUserProfile, formatProfileForAgent } from '../services/firestore.js';
@@ -249,6 +249,40 @@ router.post('/emergency', (req, res) => {
   console.log('[Call] Agent triggered EMERGENCY');
   emitEmergencyTrigger();
   res.json({ success: true, message: 'Emergency sequence initiated' });
+});
+
+/**
+ * WEBHOOK: Receive real-time transcript events from ElevenLabs
+ * ElevenLabs sends events for agent responses and user (receptionist) transcripts
+ */
+router.post('/transcript-webhook', (req, res) => {
+  const { type, agent_response_event, user_transcription_event } = req.body;
+
+  console.log('[Transcript Webhook] Received event:', type);
+
+  // Handle agent (AI) speaking
+  if (type === 'agent_response' && agent_response_event?.agent_response) {
+    const agentText = agent_response_event.agent_response;
+    console.log('[Transcript Webhook] Agent said:', agentText);
+    emitTranscriptUpdate('current-call-id', `Agent: ${agentText}`);
+  }
+
+  // Handle user (receptionist) speaking - ElevenLabs may use different event names
+  if (type === 'user_transcript' && user_transcription_event?.user_transcript) {
+    const userText = user_transcription_event.user_transcript;
+    console.log('[Transcript Webhook] Receptionist said:', userText);
+    emitTranscriptUpdate('current-call-id', `Receptionist: ${userText}`);
+  }
+
+  // Also handle alternative event format (transcript_event)
+  const transcriptEvent = req.body.transcript_event || req.body.user_transcript_event;
+  if (type === 'user_transcript' && transcriptEvent?.user_transcript) {
+    const userText = transcriptEvent.user_transcript;
+    console.log('[Transcript Webhook] Receptionist said:', userText);
+    emitTranscriptUpdate('current-call-id', `Receptionist: ${userText}`);
+  }
+
+  res.json({ received: true });
 });
 
 // POST /call/webhook - Generic ElevenLabs webhook for call events
