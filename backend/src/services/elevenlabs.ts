@@ -37,6 +37,9 @@ export async function sendChatMessage(message: string, conversationId?: string):
     const ws = new WebSocket(wsUrl);
     let agentText = "";
     let resolved = false;
+    let userMessageSent = false;
+    let greetingReceived = false;
+    let responseCount = 0;
 
     const resolveOnce = (response: ConversationResponse) => {
       if (!resolved) {
@@ -48,17 +51,24 @@ export async function sendChatMessage(message: string, conversationId?: string):
       }
     };
 
+    const sendUserMessage = () => {
+      if (!userMessageSent) {
+        userMessageSent = true;
+        agentText = ""; // Clear the greeting text
+        const payload = {
+          type: 'user_message',
+          user_message: {
+            text: message
+          }
+        };
+        console.log('[ElevenLabs] Sending user message:', message);
+        ws.send(JSON.stringify(payload));
+      }
+    };
+
     ws.onopen = () => {
       console.log('[ElevenLabs] Connected to Agent WS');
-      // ElevenLabs ConvAI protocol: send user text as 'user_message' type
-      const payload = {
-        type: 'user_message',
-        user_message: {
-          text: message
-        }
-      };
-      console.log('[ElevenLabs] Sending user message:', message);
-      ws.send(JSON.stringify(payload));
+      // Don't send immediately - wait for greeting to complete
     };
 
     ws.onmessage = (event) => {
@@ -67,36 +77,40 @@ export async function sendChatMessage(message: string, conversationId?: string):
         console.log('[ElevenLabs] WS Message:', data.type, JSON.stringify(data).substring(0, 200));
 
         if (data.type === 'ping') {
-          // Respond to keep connection alive
           ws.send(JSON.stringify({ type: 'pong', event_id: data.ping_event?.event_id }));
         }
 
         if (data.type === 'agent_response') {
-          // Structure varies. Common patterns:
-          // { type: "agent_response", agent_response_event: { agent_response: "text here" } }
-          // OR: { type: "agent_response", agent_response_event: { response: "text" } }
-          // OR: { type: "agent_response", text: "..." }
+          responseCount++;
           const evt = data.agent_response_event || data;
           const text = evt.agent_response || evt.response || evt.text || data.text || "";
           
           if (text && typeof text === 'string' && text.length > 0) {
-            agentText += text;
+            if (userMessageSent) {
+              // This is the response to our message
+              agentText += text;
+            } else {
+              // This is the initial greeting - mark it received
+              greetingReceived = true;
+              console.log('[ElevenLabs] Greeting received:', text);
+            }
           }
         }
 
-        // Some implementations send "agent_response_correction" with final text
-        if (data.type === 'agent_response_correction') {
+        if (data.type === 'agent_response_correction' && userMessageSent) {
           const correctedText = data.agent_response_correction_event?.corrected_response || data.corrected_response || "";
           if (correctedText) {
-            agentText = correctedText; // Replace with corrected version
+            agentText = correctedText;
           }
         }
 
-        // Look for end-of-turn or final message indicator
-        // Some agents send "audio" with is_final flag or "end_of_response" type
+        // When greeting audio ends, send our message
         if (data.type === 'audio' && data.audio_event?.end_of_stream) {
-          // Audio stream finished, if we have text, resolve
-          if (agentText) {
+          if (!userMessageSent && greetingReceived) {
+            console.log('[ElevenLabs] Greeting audio finished, sending user message');
+            sendUserMessage();
+          } else if (userMessageSent && agentText) {
+            // Response to our message is complete
             resolveOnce({ conversation_id, message: agentText });
           }
         }
@@ -106,13 +120,21 @@ export async function sendChatMessage(message: string, conversationId?: string):
       }
     };
     
-    // TIMEOUT / Safety - wait longer for full response
+    // Fallback: if no audio end_of_stream, send message after delay
+    setTimeout(() => {
+      if (!userMessageSent) {
+        console.log('[ElevenLabs] Timeout - sending user message anyway');
+        sendUserMessage();
+      }
+    }, 3000);
+
+    // Final timeout
     setTimeout(() => {
         resolveOnce({
             conversation_id,
-            message: agentText || "Agent processing... (no text response received)"
+            message: agentText || "Agent processing... (no response received)"
         });
-    }, 10000);
+    }, 15000);
 
     ws.onerror = (error) => {
       console.error('[ElevenLabs] WS Error:', error);
@@ -123,8 +145,7 @@ export async function sendChatMessage(message: string, conversationId?: string):
     
     ws.onclose = () => {
        console.log('[ElevenLabs] WS Closed');
-       // If we have accumulated text but didn't resolve yet, do it now
-       if (!resolved && agentText) {
+       if (!resolved && agentText && userMessageSent) {
          resolveOnce({ conversation_id, message: agentText });
        }
     };
