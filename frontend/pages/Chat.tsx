@@ -471,20 +471,9 @@ const Chat: React.FC = () => {
               <button
                 onClick={async () => {
                   if (isCallActive) {
-                    // End the active call via backend
-                    try {
-                      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/end`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                      });
-                      setIsCallActive(false);
-                      setTranscript([]);
-                    } catch (error) {
-                      console.error('Failed to end call:', error);
-                      // Still close the UI even if the API call fails
-                      setIsCallActive(false);
-                      setTranscript([]);
-                    }
+                    // Close the call UI
+                    setIsCallActive(false);
+                    setTranscript([]);
                   } else {
                     setIsCallActive(true);
                   }
@@ -705,16 +694,7 @@ const Chat: React.FC = () => {
           {isCallActive && (
             <div className={`${activeWidget !== 'none' ? 'flex-shrink-0' : 'flex-1 h-full'}`}>
               <LiveCallPanel
-                onClose={async () => {
-                  // End the active call via backend
-                  try {
-                    await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/end`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' }
-                    });
-                  } catch (error) {
-                    console.error('Failed to end call:', error);
-                  }
+                onClose={() => {
                   setIsCallActive(false);
                   setTranscript([]);
                 }}

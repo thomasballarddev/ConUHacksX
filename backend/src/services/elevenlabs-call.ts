@@ -276,61 +276,6 @@ export function getActiveCallStatus(): ActiveCall | null {
 }
 
 /**
- * End the active call via ElevenLabs DELETE conversation API
- */
-export async function endActiveCall(): Promise<boolean> {
-  if (!activeCall || !activeCall.conversationId) {
-    console.log('[ElevenLabs-Call] No active call to end');
-    return false;
-  }
-
-  console.log(`[ElevenLabs-Call] Ending call: ${activeCall.id}`);
-  console.log(`[ElevenLabs-Call] Conversation ID: ${activeCall.conversationId}`);
-
-  try {
-    // Use the DELETE conversation endpoint to properly terminate the call
-    const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${activeCall.conversationId}`, {
-      method: 'DELETE',
-      headers: {
-        'xi-api-key': API_KEY || ''
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[ElevenLabs-Call] Failed to end call:', response.status, errorText);
-
-      // If it's a 404, the conversation might already be ended
-      if (response.status === 404) {
-        console.log('[ElevenLabs-Call] Conversation already ended (404)');
-      } else {
-        return false;
-      }
-    } else {
-      console.log('[ElevenLabs-Call] ✅ Call terminated via DELETE API');
-    }
-
-    // Update call state and emit events
-    if (activeCall) {
-      const callId = activeCall.id;
-      const transcript = activeCall.transcript;
-
-      activeCall.state = 'ended';
-      emitCallEnded(callId, transcript);
-
-      // Clear active call
-      activeCall = null;
-      console.log('[ElevenLabs-Call] ✅ Call ended successfully');
-    }
-
-    return true;
-  } catch (error) {
-    console.error('[ElevenLabs-Call] Error ending call:', error);
-    return false;
-  }
-}
-
-/**
  * Parse time slots from natural language text
  */
 function parseTimeSlotsFromText(text: string): TimeSlot[] {
