@@ -175,8 +175,7 @@ const Chat: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          phone: clinic.phone || '+14388083471',
-          reason: 'Patient experiencing symptoms and needs an appointment',
+          phone: '+18194755578', // Demo: always call this number
           clinic_name: clinic.name
         })
       });

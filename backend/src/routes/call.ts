@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger } from '../services/websocket.js';
 import { initiateClinicCall, sendResponseToCall, getActiveCallStatus } from '../services/elevenlabs-call.js';
+import { getPatientSymptoms } from '../services/gemini.js';
 import { TimeSlot } from '../types/index.js';
 
 const router = Router();
@@ -15,13 +16,17 @@ let pendingWebhook: PendingWebhook | null = null;
 // POST /call/initiate - Start a clinic call
 router.post('/initiate', async (req, res) => {
   try {
-    const { phone, reason, clinic_name } = req.body;
+    const { phone, clinic_name } = req.body;
     
-    if (!phone || !reason) {
-      return res.status(400).json({ error: 'Phone and reason are required' });
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone is required' });
     }
     
-    const result = await initiateClinicCall(phone, reason, clinic_name || 'Medical Clinic');
+    // Get actual symptoms from Gemini conversation
+    const symptoms = getPatientSymptoms();
+    console.log(`[Call] Initiating call with symptoms: ${symptoms}`);
+    
+    const result = await initiateClinicCall(phone, symptoms, clinic_name || 'Medical Clinic');
     res.json(result);
   } catch (error) {
     console.error('Call initiate error:', error);

@@ -32,15 +32,23 @@ When a user describes symptoms and needs a doctor appointment:
 
 Keep responses conversational and helpful.`;
 
+// Store current patient symptoms for call context
+let currentPatientSymptoms: string = '';
+
 // Function declarations for Gemini
 const functionDeclarations: FunctionDeclaration[] = [
   {
     name: "show_nearby_clinics",
-    description: "Display a list of nearby medical clinics to the user. Call this when the user asks about finding a clinic or doctor.",
+    description: "Display a list of nearby medical clinics to the user. Call this when the user describes symptoms and needs to find a clinic or doctor. Always include the patient's symptoms.",
     parameters: {
       type: SchemaType.OBJECT,
-      properties: {},
-      required: []
+      properties: {
+        symptoms: {
+          type: SchemaType.STRING,
+          description: "Summary of the patient's symptoms as described in the conversation"
+        }
+      },
+      required: ["symptoms"]
     }
   },
   {
@@ -77,9 +85,13 @@ async function executeFunctionCall(name: string, args: Record<string, unknown>):
   console.log(`[Gemini] Executing function: ${name}`, args);
   
   switch (name) {
-    case "show_nearby_clinics":
+    case "show_nearby_clinics": {
+      const symptoms = args.symptoms as string || 'general health concerns';
+      currentPatientSymptoms = symptoms;
+      console.log(`[Gemini] Patient symptoms: ${symptoms}`);
       emitShowClinics(clinics);
-      return "Displayed 3 nearby clinics to the user. Ask them which clinic they'd like to book with.";
+      return `Displayed 3 nearby clinics to the user. The patient is experiencing: ${symptoms}. Ask them which clinic they'd like to book with.`;
+    }
     
     case "initiate_clinic_call": {
       const clinicName = args.clinic_name as string;
@@ -177,4 +189,9 @@ export function cleanupOldSessions(maxAgeMs: number = 30 * 60 * 1000) {
     keysToDelete.forEach(key => chatSessions.delete(key));
     console.log('[Gemini] Cleaned up', keysToDelete.length, 'old sessions');
   }
+}
+
+// Get current patient symptoms for call context
+export function getPatientSymptoms(): string {
+  return currentPatientSymptoms || 'general health concerns';
 }

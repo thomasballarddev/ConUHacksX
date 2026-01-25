@@ -7,8 +7,16 @@ interface AppointmentSchedulerProps {
 }
 
 const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm, availableSlots = [] }) => {
-  const [selectedDay, setSelectedDay] = useState('Tue');
+  const [selectedDay, setSelectedDay] = useState('MON');
   const [selectedTime, setSelectedTime] = useState('08:00 AM');
+
+  // Auto-select first available slot when data changes
+  React.useEffect(() => {
+    if (availableSlots.length > 0) {
+      setSelectedDay(availableSlots[0].day);
+      setSelectedTime(availableSlots[0].time);
+    }
+  }, [availableSlots]);
 
   const days = [
     { day: 'MON', date: '12' },
