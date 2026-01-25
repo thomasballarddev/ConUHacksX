@@ -253,14 +253,13 @@ const Chat: React.FC = () => {
       setTranscript(prev => [...prev, line]);
     });
 
-    socket.on('chat_response', (msg) => {
+    socket.on('chat_response', (msg: { role: string, content: string, audio?: string }) => {
       setIsLoading(false);
       setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
       speak(msg.content, () => {
         // Auto-restart listening after AI finishes speaking
-        // Add small delay to avoid picking up echo
         setTimeout(() => startListening(), 500);
-      });
+      }, msg.audio);
     });
 
     // Agent needs user input during call
@@ -336,7 +335,7 @@ const Chat: React.FC = () => {
         speak(data.message, () => {
           // Auto-restart listening after AI finishes speaking
           setTimeout(() => startListening(), 500);
-        });
+        }, data.audio);
       }
       setIsLoading(false);
 

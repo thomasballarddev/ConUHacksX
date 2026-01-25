@@ -70,64 +70,96 @@ export const useVoiceInput = ({ onFinalTranscript }: UseVoiceInputProps) => {
 
     // Keep reference to prevent garbage collection issues
     const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
-    const speak = useCallback((text: string, onEnd?: () => void) => {
-        console.log("[useVoiceInput] speak called with text:", text);
+    // Browser TTS fallback function
+    const speakWithBrowser = useCallback((text: string, onEnd?: () => void) => {
+        console.log("[useVoiceInput] Using browser TTS fallback");
 
         if (typeof window !== 'undefined' && !('speechSynthesis' in window)) {
-            console.error("[useVoiceInput] speechSynthesis not supported in this browser");
-            onEnd?.(); // Trigger callback anyway so flow continues? Or maybe not.
+            console.error("[useVoiceInput] speechSynthesis not supported");
+            onEnd?.();
             return;
         }
 
-        // Cancel any ongoing speech
         window.speechSynthesis.cancel();
-
         const utterance = new SpeechSynthesisUtterance(text);
-        currentUtteranceRef.current = utterance; // Store ref
+        currentUtteranceRef.current = utterance;
 
-        // Try to select a "natural" or "enhanced" voice if available
-        // Use the voices state which ensures they are loaded
         const currentVoices = voices.length > 0 ? voices : window.speechSynthesis.getVoices();
-
-        console.log("[useVoiceInput] Available voices count:", currentVoices.length);
-
         const preferredVoice = currentVoices.find(v =>
             (v.name.includes('Samantha') || v.name.includes('Google US English') || v.name.includes('Neural')) && v.lang.startsWith('en')
         ) || currentVoices.find(v => v.lang.startsWith('en')) || currentVoices[0];
 
         if (preferredVoice) {
             utterance.voice = preferredVoice;
-            console.log("[useVoiceInput] Selected voice:", preferredVoice.name);
-        } else {
-            console.warn("[useVoiceInput] No suitable voice found, using default");
         }
 
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
 
-        // Cleanup ref on end
         utterance.onend = () => {
-            console.log("[useVoiceInput] Speech finished");
             currentUtteranceRef.current = null;
-            if (onEnd) {
-                console.log("[useVoiceInput] Executing onEnd callback");
-                onEnd();
-            }
+            onEnd?.();
         };
 
         utterance.onerror = (e) => {
-            console.error("[useVoiceInput] Speech error:", e);
+            console.error("[useVoiceInput] Browser TTS error:", e);
         };
 
-        console.log("[useVoiceInput] Calling window.speechSynthesis.speak");
         try {
             window.speechSynthesis.speak(utterance);
         } catch (e) {
             console.error("[useVoiceInput] Exception during speak:", e);
         }
     }, [voices]);
+
+    const speak = useCallback((text: string, onEnd?: () => void, audioBase64?: string) => {
+        console.log("[useVoiceInput] speak called, audio provided:", !!audioBase64);
+
+        // Cancel any ongoing speech
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+            currentAudioRef.current = null;
+        }
+
+        // If we have ElevenLabs audio, play it via Audio element
+        if (audioBase64) {
+            console.log("[useVoiceInput] Playing ElevenLabs audio");
+            try {
+                const audio = new Audio(`data:audio/mpeg;base64,${audioBase64}`);
+                currentAudioRef.current = audio;
+
+                audio.onended = () => {
+                    console.log("[useVoiceInput] ElevenLabs audio finished");
+                    currentAudioRef.current = null;
+                    onEnd?.();
+                };
+
+                audio.onerror = (e) => {
+                    console.error("[useVoiceInput] Audio playback error:", e);
+                    currentAudioRef.current = null;
+                    speakWithBrowser(text, onEnd);
+                };
+
+                audio.play().catch((e) => {
+                    console.error("[useVoiceInput] Failed to play audio:", e);
+                    speakWithBrowser(text, onEnd);
+                });
+
+                return;
+            } catch (e) {
+                console.error("[useVoiceInput] Error creating audio element:", e);
+            }
+        }
+
+        // Fallback: Use browser TTS
+        speakWithBrowser(text, onEnd);
+    }, [speakWithBrowser]);
 
     const stopAudioAnalysis = () => {
         if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
