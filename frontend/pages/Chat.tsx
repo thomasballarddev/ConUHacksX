@@ -67,6 +67,10 @@ const Chat: React.FC = () => {
   useEffect(() => {
     // 1. Connect to Backend WebSocket
     const socket = io(import.meta.env.VITE_BACKEND_URL, {
+      transports: ['websocket', 'polling'], // Prefer websocket but fallback to polling
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
       extraHeaders: {
         'ngrok-skip-browser-warning': 'true'
       }
@@ -74,37 +78,56 @@ const Chat: React.FC = () => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('Connected to backend WS');
+      console.log('Connected to backend WS, socket id:', socket.id);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Disconnected from backend WS:', reason);
     });
 
     // 2. Listen for Events
     socket.on('show_clinics', (data) => {
+      console.log('Received show_clinics:', data);
       setClinics(data);
       setActiveWidget('location');
     });
 
     socket.on('show_calendar', (slots) => {
+      console.log('Received show_calendar:', slots);
       setAvailableSlots(slots);
       setActiveWidget('schedule');
     });
 
     socket.on('call_started', () => {
+      console.log('Received call_started');
       setIsCallActive(true);
       // Keep widget if open, or minimized
     });
 
     socket.on('emergency_trigger', () => {
+      console.log('Received emergency_trigger');
       setShowEmergency(false); // Close modal if open
       setShowEmergency(true); // Re-open or just ensure state
     });
 
     socket.on('call_transcript_update', (callId, line) => {
+      console.log('Received call_transcript_update:', callId, line);
       setTranscript(prev => [...prev, line]);
     });
 
     socket.on('chat_response', (msg) => {
+      console.log('Received chat_response:', msg);
       setIsLoading(false);
       setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
+    });
+
+    socket.on('error', (msg) => {
+      console.error('Socket error:', msg);
+      setIsLoading(false);
     });
 
     return () => {
@@ -245,8 +268,8 @@ const Chat: React.FC = () => {
                   </div>
 
                   <div className={`rounded-3xl p-5 shadow-sm border border-black/5 ${msg.role === 'user'
-                      ? 'bg-primary text-white rounded-tr-none'
-                      : 'bg-white text-primary rounded-tl-none'
+                    ? 'bg-primary text-white rounded-tr-none'
+                    : 'bg-white text-primary rounded-tl-none'
                     }`}>
                     <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                   </div>
@@ -296,8 +319,8 @@ const Chat: React.FC = () => {
                   onClick={handleSend}
                   disabled={isLoading || !input.trim()}
                   className={`size-11 rounded-2xl transition-all flex items-center justify-center ${isLoading || !input.trim()
-                      ? 'bg-gray-100 text-gray-400'
-                      : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
+                    ? 'bg-gray-100 text-gray-400'
+                    : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
                     }`}
                 >
                   <span className="material-symbols-outlined">arrow_upward</span>
