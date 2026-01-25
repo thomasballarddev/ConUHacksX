@@ -27,20 +27,35 @@ let activeCall: ActiveCall | null = null;
 export async function initiateClinicCall(phoneNumber: string, reason: string, clinicName: string): Promise<{ callId: string; status: string }> {
   console.log(`[ElevenLabs-Call] Initiating call to ${clinicName} at ${phoneNumber}`);
   console.log(`[ElevenLabs-Call] Reason: ${reason}`);
+  console.log(`[ElevenLabs-Call] Using AGENT_ID: ${AGENT_ID}`);
+  
+  if (!API_KEY || !AGENT_ID) {
+    throw new Error('Missing ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID');
+  }
   
   // First, get a signed URL for the conversation
   const signedUrlResponse = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`, {
     method: 'GET',
     headers: {
-      'xi-api-key': API_KEY || ''
+      'xi-api-key': API_KEY
     }
   });
 
   if (!signedUrlResponse.ok) {
+    const errorText = await signedUrlResponse.text();
+    console.error('[ElevenLabs-Call] Failed to get signed URL:', errorText);
     throw new Error(`ElevenLabs API error: ${signedUrlResponse.statusText}`);
   }
 
-  const { signed_url } = await signedUrlResponse.json();
+  const responseData = await signedUrlResponse.json();
+  console.log('[ElevenLabs-Call] API Response:', JSON.stringify(responseData));
+  
+  // The response contains signed_url directly
+  const signedUrl = responseData.signed_url;
+  if (!signedUrl) {
+    throw new Error('No signed_url in ElevenLabs response');
+  }
+  
   const callId = `call_${Date.now()}`;
   
   // Create active call record
@@ -56,24 +71,26 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
 
   // Emit call started event to frontend
   emitCallStarted(callId);
+  console.log('[ElevenLabs-Call] Call started event emitted');
   
   // Connect to WebSocket for the conversation
-  const ws = new WebSocket(signed_url);
+  console.log('[ElevenLabs-Call] Connecting to WebSocket...');
+  const ws = new WebSocket(signedUrl);
   activeCall.ws = ws;
 
   ws.onopen = () => {
-    console.log('[ElevenLabs-Call] Connected to agent');
+    console.log('[ElevenLabs-Call] Connected to agent WebSocket');
     if (activeCall) {
       activeCall.state = 'active';
     }
     
     // Send initial context to the agent about the call
-    // This tells the ElevenLabs agent what it's doing
     const contextMessage = {
       type: 'contextual_update',
       text: `You are calling ${clinicName} on behalf of a patient. The patient is experiencing: ${reason}. Please introduce yourself as an AI assistant calling on behalf of a Health.me patient, and request to schedule an appointment. When the receptionist offers available times, use your request_schedule_selection tool to let the patient choose.`
     };
     ws.send(JSON.stringify(contextMessage));
+    console.log('[ElevenLabs-Call] Sent context message to agent');
   };
 
   ws.onmessage = (event) => {
@@ -90,7 +107,7 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   };
 
   ws.onclose = () => {
-    console.log('[ElevenLabs-Call] Call ended');
+    console.log('[ElevenLabs-Call] WebSocket closed');
     if (activeCall) {
       activeCall.state = 'ended';
       emitCallEnded(activeCall.id, activeCall.transcript);
