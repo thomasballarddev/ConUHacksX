@@ -7,7 +7,9 @@ import LocationWidget from '../components/LocationWidget';
 import QuestionWidget from '../components/QuestionWidget';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { saveMessage, getOrCreateActiveChat, subscribeToMessages } from '../src/firestore';
+import { saveMessage, getOrCreateActiveChat, subscribeToMessages, createChatSession } from '../src/firestore';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../src/firebase';
 
 interface Message {
   role: 'user' | 'model';
@@ -351,11 +353,28 @@ const Chat: React.FC = () => {
     });
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     setMessages([{ role: 'model', text: 'New conversation started. How can I assist you with your health today?' }]);
     setIsCompleted(false);
     setActiveSessionId(null);
     setConversationId(null);  // Reset conversation for fresh start
+
+    // Create a new Firestore chat session
+    if (user) {
+      try {
+        const newChatId = await createChatSession(user.uid);
+        setFirestoreChatId(newChatId);
+
+        // Update the active chat reference
+        const activeChatRef = doc(db, 'users', user.uid, 'activeChat', 'current');
+        await setDoc(activeChatRef, { chatId: newChatId });
+
+        console.log('[Chat] Created new Firestore chat:', newChatId);
+      } catch (error) {
+        console.error('[Chat] Failed to create new Firestore chat:', error);
+      }
+    }
+
     navigate('/chat');
   };
 

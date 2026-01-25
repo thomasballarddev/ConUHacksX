@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { initiateClinicCall, getActiveCallStatus, sendResponseToCall } from './elevenlabs-call.js';
 import { emitShowClinics, emitEmergencyTrigger } from './websocket.js';
 import { clinics } from '../data/clinics.js';
-import { addMessage, getConversationText, getCurrentChat, debugState, getAllMessages } from './chatStorage.js';
+import { addMessage, getConversationText, getCurrentChat, debugState, getAllMessages, startNewChat } from './chatStorage.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -176,8 +176,17 @@ async function executeFunctionCall(name: string, args: Record<string, unknown>):
 }
 
 export async function sendChatMessage(message: string, conversationId?: string): Promise<{ message: string; conversation_id: string; function_called?: string }> {
-  // Get current chat from db.json
-  const chat = getCurrentChat();
+  // If no conversationId provided, start a new chat
+  let chat;
+  if (!conversationId) {
+    console.log('[Gemini] No conversation_id provided, starting new chat');
+    chat = startNewChat();
+    // Reset the chat session for fresh context
+    chatSession = null;
+  } else {
+    // Use existing chat
+    chat = getCurrentChat();
+  }
 
   // Store user message in db.json
   addMessage('user', message);
