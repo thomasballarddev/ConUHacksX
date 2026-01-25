@@ -212,13 +212,6 @@ const Chat: React.FC = () => {
   const [agentQuestion, setAgentQuestion] = useState('');
   const [agentContext, setAgentContext] = useState('');
 
-  // TEST FUNCTION - Remove in production
-  const testAgentInput = () => {
-    setAgentNeedsInput(true);
-    setAgentQuestion("What is your date of birth?");
-    setAgentContext("The receptionist needs to verify your identity.");
-  };
-
   useEffect(() => {
     // 1. Connect to Backend WebSocket
     const socket = io(import.meta.env.VITE_BACKEND_URL); // Uses env var
@@ -511,17 +504,6 @@ const Chat: React.FC = () => {
                   </>
                 )}
               </button>
-              {/* TEST BUTTON - Remove in production */}
-              {isCallActive && (
-                <button
-                  onClick={testAgentInput}
-                  className="flex items-center gap-2 border border-black/5 bg-white text-primary px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm hover:bg-primary hover:text-white"
-                  title="Test: Simulate agent asking for input"
-                >
-                  <span className="material-symbols-outlined text-sm">science</span>
-                  Test
-                </button>
-              )}
             </div>
           </div>
 
