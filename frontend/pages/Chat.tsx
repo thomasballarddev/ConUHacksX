@@ -12,22 +12,122 @@ import AppointmentScheduler from '../components/AppointmentScheduler';
 import LiveCallPanel from '../components/LiveCallPanel';
 import LocationWidget from '../components/LocationWidget';
 
+// Speech Recognition type declarations
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  onstart: (() => void) | null;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
+
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { 
-      role: 'model', 
+    {
+      role: 'model',
       text: 'Hello! I am your Health.me AI assistant. I have access to your health records and current vitals. How can I help you today?'
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
+  // Voice input state
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
- 
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Initialize speech recognition check
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+    }
+  }, []);
+
+  const toggleListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+      setIsListening(false);
+    } else {
+      // Create fresh instance each time
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false; // Single result mode
+      recognition.interimResults = false; // Only final result, not word-by-word
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event);
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+
+      try {
+        recognition.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error('Failed to start speech recognition:', error);
+        recognitionRef.current = null;
+      }
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -182,24 +282,43 @@ const Chat: React.FC = () => {
                 <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">New</span>
               </button>
               
-              <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+              <div className={`flex-1 bg-white border shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 transition-all ${
+                  isListening
+                    ? 'border-red-400 ring-2 ring-red-100 focus-within:ring-red-200'
+                    : 'border-black/5 focus-within:ring-primary/10'
+                }`}>
                 <button className="p-3 text-gray-400 hover:text-primary transition-colors">
                   <span className="material-symbols-outlined">attachment</span>
                 </button>
-                <input 
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder:text-gray-400 py-3" 
-                  placeholder="Ask about symptoms or bookings..." 
+                <input
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder:text-gray-400 py-3"
+                  placeholder={isListening ? "Listening..." : "Ask about symptoms or bookings..."}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 />
-                <button 
+                {speechSupported && (
+                  <button
+                    onClick={toggleListening}
+                    className={`p-3 transition-all rounded-xl ${
+                      isListening
+                        ? 'text-red-500 bg-red-50 animate-pulse'
+                        : 'text-gray-400 hover:text-primary hover:bg-gray-50'
+                    }`}
+                    title={isListening ? "Stop listening" : "Voice input"}
+                  >
+                    <span className="material-symbols-outlined">
+                      {isListening ? 'mic' : 'mic_none'}
+                    </span>
+                  </button>
+                )}
+                <button
                   onClick={handleSend}
                   disabled={isLoading || !input.trim()}
                   className={`size-11 rounded-2xl transition-all flex items-center justify-center ${
-                    isLoading || !input.trim() 
-                      ? 'bg-gray-100 text-gray-400' 
+                    isLoading || !input.trim()
+                      ? 'bg-gray-100 text-gray-400'
                       : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
                   }`}
                 >
