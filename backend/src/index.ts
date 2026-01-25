@@ -172,69 +172,31 @@ app.post('/chat', async (req: Request, res: Response) => {
     ws.on('open', () => {
       console.log('[Chat] Connected to ElevenLabs');
 
-      // Send initial config for text-only mode with client tools
+      // Send the user's message directly (config is set on the agent itself)
       ws.send(JSON.stringify({
-        type: 'conversation_initiation_client_data',
-        text_only: true,
-        conversation_config_override: {
-          agent: {
-            prompt: {
-              prompt: `You are Health.me, a friendly AI health assistant. You can help users with health questions and medical information.
-
-You have access to a tool called "make_call" that allows you to initiate phone calls on behalf of the user.
-When the user asks you to call someone (e.g., "call my doctor", "call Alex and tell him I'll be late"), use the make_call tool.
-
-Always be helpful, empathetic, and provide accurate health information.`
-            }
-          },
-          tools: [
-            {
-              type: 'client',
-              name: 'make_call',
-              description: 'Initiates a phone call to a specified number with a message',
-              parameters: {
-                type: 'object',
-                properties: {
-                  phone_number: {
-                    type: 'string',
-                    description: 'The phone number to call (with country code)'
-                  },
-                  message: {
-                    type: 'string',
-                    description: 'The message or purpose of the call - what the agent should say'
-                  },
-                  recipient_name: {
-                    type: 'string',
-                    description: 'Name of the person being called'
-                  }
-                },
-                required: ['message']
-              }
-            }
-          ]
-        }
+        type: 'user_message',
+        text: message
       }));
-
-      // Send the user's message
-      setTimeout(() => {
-        ws.send(JSON.stringify({
-          type: 'user_message',
-          text: message
-        }));
-      }, 500);
     });
 
     ws.on('message', async (data: RawData) => {
       try {
         const msg = JSON.parse(data.toString());
-        console.log('[Chat] ElevenLabs event:', msg.type);
+        console.log('[Chat] ElevenLabs event:', msg.type, JSON.stringify(msg).substring(0, 100));
 
         // Handle different message types
         if (msg.type === 'agent_response' || msg.type === 'text') {
           const text = msg.agent_response_event?.agent_response || msg.text || '';
           if (text) {
             responseText += text;
+            console.log('[Chat] Got agent response:', text);
           }
+        }
+
+        // Skip metadata messages
+        if (msg.type === 'conversation_initiation_metadata') {
+          console.log('[Chat] Got conversation metadata, waiting for response...');
+          return;
         }
 
         // Handle tool calls
