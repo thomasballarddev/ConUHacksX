@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger, emitAgentNeedsInput, emitAgentInputReceived } from '../services/websocket.js';
 import { initiateClinicCall, sendResponseToCall, getActiveCallStatus } from '../services/elevenlabs-call.js';
 import { getPatientSymptoms } from '../services/gemini.js';
+import { getUserProfile, formatProfileForAgent } from '../services/firestore.js';
 import { TimeSlot } from '../types/index.js';
 
 const router = Router();
@@ -16,7 +17,7 @@ let pendingWebhook: PendingWebhook | null = null;
 // POST /call/initiate - Start a clinic call
 router.post('/initiate', async (req, res) => {
   try {
-    const { phone, clinic_name } = req.body;
+    const { phone, clinic_name, userId } = req.body;
 
     if (!phone) {
       return res.status(400).json({ error: 'Phone is required' });
@@ -25,8 +26,23 @@ router.post('/initiate', async (req, res) => {
     // Get symptoms by analyzing the full conversation with Gemini
     const symptoms = await getPatientSymptoms();
     console.log(`[Call] Initiating call with extracted symptoms: ${symptoms}`);
-    
-    const result = await initiateClinicCall(phone, symptoms, clinic_name || 'Medical Clinic');
+
+    // Get patient info from Firestore if userId is provided
+    let patientInfo: string | undefined;
+    if (userId) {
+      console.log(`[Call] Fetching profile for user: ${userId}`);
+      const profile = await getUserProfile(userId);
+      if (profile) {
+        patientInfo = formatProfileForAgent(profile);
+        console.log(`[Call] Patient info retrieved: ${patientInfo}`);
+      } else {
+        console.log(`[Call] No profile found for user: ${userId}`);
+      }
+    } else {
+      console.log(`[Call] No userId provided, skipping profile fetch`);
+    }
+
+    const result = await initiateClinicCall(phone, symptoms, clinic_name || 'Medical Clinic', patientInfo);
     res.json(result);
   } catch (error) {
     console.error('Call initiate error:', error);

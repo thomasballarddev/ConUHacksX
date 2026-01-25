@@ -25,9 +25,10 @@ let activeCall: ActiveCall | null = null;
 /**
  * Initiate an ACTUAL outbound phone call to a clinic via ElevenLabs + Twilio
  */
-export async function initiateClinicCall(phoneNumber: string, reason: string, clinicName: string): Promise<{ callId: string; status: string }> {
+export async function initiateClinicCall(phoneNumber: string, reason: string, clinicName: string, patientInfo?: string): Promise<{ callId: string; status: string }> {
   console.log(`[ElevenLabs-Call] Initiating REAL call to ${clinicName} at ${phoneNumber}`);
   console.log(`[ElevenLabs-Call] Reason: ${reason}`);
+  console.log(`[ElevenLabs-Call] Patient Info: ${patientInfo || 'Not provided'}`);
   console.log(`[ElevenLabs-Call] Using AGENT_ID: ${AGENT_ID}`);
   console.log(`[ElevenLabs-Call] Using Twilio Phone: ${TWILIO_PHONE_NUMBER}`);
 
@@ -73,7 +74,8 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
     conversation_initiation_client_data: {
       dynamic_variables: {
         clinic_name: clinicName,
-        patient_symptoms: reason
+        patient_symptoms: reason,
+        patient_info: patientInfo || 'No patient information available'
       }
     }
   };

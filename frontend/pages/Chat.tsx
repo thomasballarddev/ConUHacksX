@@ -355,7 +355,10 @@ const Chat: React.FC = () => {
     // Trigger backend call
     await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'emergency' }),
+      body: JSON.stringify({
+        type: 'emergency',
+        userId: user?.uid // Pass the user ID for emergency calls too
+      }),
       headers: { 'Content-Type': 'application/json' }
     });
   };
@@ -381,7 +384,8 @@ const Chat: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: '+18194755578', // Demo: always call this number
-          clinic_name: clinic.name
+          clinic_name: clinic.name,
+          userId: user?.uid // Pass the user ID to fetch profile data
         })
       });
     } catch (error) {
