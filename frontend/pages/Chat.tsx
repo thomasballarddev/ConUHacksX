@@ -32,67 +32,6 @@ interface ClientToServerEvents {
 }
 
 
-// Fake session data with preloaded message history
-const sessionData = [
-  {
-    id: 1,
-    title: 'General checkup followup',
-    date: 'Today',
-    status: 'active' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! I see you had a general checkup last week. How are you feeling since then?' },
-      { role: 'user' as const, text: "I've been feeling much better, but I still have some mild fatigue in the afternoons." },
-      { role: 'model' as const, text: "That's good to hear you're improving! Mild afternoon fatigue can be normal during recovery. Make sure you're staying hydrated and getting adequate sleep. If the fatigue persists beyond another week, we should schedule a follow-up." },
-    ]
-  },
-  {
-    id: 2,
-    title: 'Lower back pain query',
-    date: 'Yesterday',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! How can I help you today?' },
-      { role: 'user' as const, text: "I've been experiencing lower back pain for the past few days, especially when sitting for long periods." },
-      { role: 'model' as const, text: "Lower back pain from prolonged sitting is quite common. I recommend taking breaks every 30 minutes to stretch, ensuring your chair provides proper lumbar support, and doing gentle stretches. Would you like me to find a nearby clinic if the pain persists?" },
-    ]
-  },
-  {
-    id: 3,
-    title: 'Prescription refill request',
-    date: 'Jan 21',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! How can I assist you today?' },
-      { role: 'user' as const, text: "I need to refill my blood pressure medication. I'm running low." },
-      { role: 'model' as const, text: "I can help you with that. I see you're on Lisinopril 10mg. I've sent a refill request to your pharmacy. It should be ready for pickup within 24 hours. Remember to take it at the same time each day." },
-    ]
-  },
-  {
-    id: 4,
-    title: 'Headache symptoms',
-    date: 'Jan 19',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! What brings you in today?' },
-      { role: 'user' as const, text: "I've been having recurring headaches for the past week. They usually start in the afternoon." },
-      { role: 'model' as const, text: "Recurring afternoon headaches could be related to eye strain, dehydration, or tension. Are you spending a lot of time on screens? Try the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds. Also ensure you're drinking enough water." },
-    ]
-  },
-  {
-    id: 5,
-    title: 'Annual physical booking',
-    date: 'Jan 15',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! How can I help you today?' },
-      { role: 'user' as const, text: "I'd like to schedule my annual physical exam." },
-      { role: 'model' as const, text: "I'd be happy to help you book your annual physical. I found several clinics near you with availability this week. Would you like me to show you the options?" },
-      { role: 'user' as const, text: 'Yes please!' },
-      { role: 'model' as const, text: "I've found City Health Center with openings on Thursday and Friday morning. Shall I book one of those slots for you?" },
-    ]
-  },
-];
-
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -107,6 +46,7 @@ const Chat: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [dbSessions, setDbSessions] = useState<any[]>([]);
 
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule'>('none');
@@ -115,18 +55,26 @@ const Chat: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
+  // Load available sessions from backend
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/sessions`)
+      .then(res => res.json())
+      .then(data => setDbSessions(data))
+      .catch(err => console.error('Failed to load sessions:', err));
+  }, []);
+
   // Load session from URL params
   useEffect(() => {
     const sessionParam = searchParams.get('session');
-    if (sessionParam) {
+    if (sessionParam && dbSessions.length > 0) {
       const sessionId = parseInt(sessionParam);
-      const session = sessionData.find(s => s.id === sessionId);
+      const session = dbSessions.find(s => s.id === sessionId);
       if (session) {
         setActiveSessionId(sessionId);
         setMessages(session.messages);
         setIsCompleted(session.status === 'completed');
       }
-    } else {
+    } else if (!sessionParam) {
       // Reset to default when no session param
       setActiveSessionId(null);
       setIsCompleted(false);
@@ -135,7 +83,7 @@ const Chat: React.FC = () => {
         text: 'Hello! I am your Health.me AI assistant. I have access to your health records and current vitals. How can I help you today?'
       }]);
     }
-  }, [searchParams]);
+  }, [searchParams, dbSessions]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -211,7 +159,10 @@ const Chat: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: userMsg })
+        body: JSON.stringify({ 
+          message: userMsg,
+          conversation_id: activeSessionId ? activeSessionId.toString() : undefined
+        })
       });
 
       if (!res.ok) {

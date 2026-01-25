@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { initiateClinicCall, getActiveCallStatus, sendResponseToCall } from './elevenlabs-call.js';
 import { emitShowClinics } from './websocket.js';
 import { clinics } from '../data/clinics.js';
+import { sessionStore } from './sessionStore.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -122,9 +123,30 @@ async function executeFunctionCall(name: string, args: Record<string, unknown>):
 }
 
 export async function sendChatMessage(message: string, conversationId?: string): Promise<{ message: string; conversation_id: string; function_called?: string }> {
-  const convId = conversationId || `conv_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  // 1. Determine Session ID or Create New
+  let chatSession: ChatSession | undefined;
+  let sessionId: number;
+
+  // Try to parse incoming ID
+  let targetSessionId = conversationId ? parseInt(conversationId) : NaN;
   
-  let chatSession = chatSessions.get(convId);
+  if (!isNaN(targetSessionId)) {
+    const existing = sessionStore.getSession(targetSessionId);
+    if (existing) {
+      sessionId = targetSessionId;
+    } else {
+      // ID provided but not found? Create new.
+      const newSession = sessionStore.createSession();
+      sessionId = newSession.id;
+    }
+  } else {
+    // No ID or invalid format -> Create New
+    const newSession = sessionStore.createSession();
+    sessionId = newSession.id;
+  }
+
+  const sessionKey = sessionId.toString();
+  chatSession = chatSessions.get(sessionKey);
   
   if (!chatSession) {
     const model = genAI.getGenerativeModel({ 
@@ -132,24 +154,41 @@ export async function sendChatMessage(message: string, conversationId?: string):
       systemInstruction: SYSTEM_PROMPT,
       tools: [{ functionDeclarations }]
     });
+
+    // Load history from Store
+    let history: { role: string; parts: { text: string }[] }[] = [];
+    const storedSession = sessionStore.getSession(sessionId);
+    
+    if (storedSession && storedSession.messages.length > 0) {
+      console.log(`[Gemini] Initializing session ${sessionId} with stored history (${storedSession.messages.length} msgs)`);
+      history = storedSession.messages.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
+    }
     
     chatSession = model.startChat({
-      history: [],
+      history: history,
     });
     
-    chatSessions.set(convId, chatSession);
-    console.log('[Gemini] Created new chat session:', convId);
+    chatSessions.set(sessionKey, chatSession);
+    console.log('[Gemini] Created new chat session instance for ID:', sessionId);
   }
+
+  // Persist USER message
+  sessionStore.addMessage(sessionId, { role: 'user', text: message });
   
   try {
-    console.log('[Gemini] Sending message:', message);
+    console.log(`[Gemini] Sending message to session ${sessionId}:`, message);
     let result = await chatSession.sendMessage(message);
     let response = result.response;
-    
+    let functionCalledName: string | undefined;
+
     // Check for function calls
     const functionCalls = response.functionCalls();
     if (functionCalls && functionCalls.length > 0) {
       const fc = functionCalls[0];
+      functionCalledName = fc.name;
       console.log('[Gemini] Function call requested:', fc.name);
       
       // Execute the function
@@ -164,17 +203,17 @@ export async function sendChatMessage(message: string, conversationId?: string):
       }]);
       
       response = result.response;
-      
-      return {
-        message: response.text(),
-        conversation_id: convId,
-        function_called: fc.name
-      };
     }
     
+    const aiResponseText = response.text();
+
+    // Persist AI Response
+    sessionStore.addMessage(sessionId, { role: 'model', text: aiResponseText });
+
     return {
-      message: response.text(),
-      conversation_id: convId
+      message: aiResponseText,
+      conversation_id: sessionKey,
+      function_called: functionCalledName
     };
   } catch (error) {
     console.error('[Gemini] Error:', error);

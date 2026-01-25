@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { sendChatMessage } from '../services/gemini.js';
+import { sessionStore } from '../services/sessionStore.js';
 
 const router = Router();
 
@@ -18,6 +19,11 @@ router.post('/', async (req, res) => {
     console.error('Chat error:', error);
     res.status(500).json({ error: 'Failed to process chat request' });
   }
+});
+
+// GET /chat/sessions - Get list of mock sessions
+router.get('/sessions', (req, res) => {
+  res.json(sessionStore.getAllSessions());
 });
 
 export default router;
