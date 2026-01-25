@@ -66,7 +66,7 @@ const Chat: React.FC = () => {
 
   useEffect(() => {
     // 1. Connect to Backend WebSocket
-    const socket = io('http://localhost:3001'); // Assume local for now, env var later
+    const socket = io('http://35.203.120.186:3001'); // Assume local for now, env var later
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -118,7 +118,7 @@ const Chat: React.FC = () => {
 
     try {
       // Send to backend via REST (or WS, but REST handles the ElevenLabs agent initiation better initially)
-      const res = await fetch('http://localhost:3001/chat', {
+      const res = await fetch('http://35.203.120.186:3001/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -154,7 +154,7 @@ const Chat: React.FC = () => {
     // For now, let's pretend a call started
     setIsCallActive(true);
     // Trigger backend call
-    await fetch('http://localhost:3001/call/initiate', {
+    await fetch('http://35.203.120.186:3001/call/initiate', {
         method: 'POST', 
         body: JSON.stringify({ type: 'emergency' }),
         headers: {'Content-Type': 'application/json'}
