@@ -34,15 +34,30 @@ export async function sendChatMessage(message: string, conversationId?: string):
   const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${AGENT_ID}&conversation_id=${conversation_id}`;
 
   return new Promise((resolve, reject) => {
-    // Assuming Node environment with global WebSocket (Node 22+)
     const ws = new WebSocket(wsUrl);
     let agentText = "";
+    let resolved = false;
+
+    const resolveOnce = (response: ConversationResponse) => {
+      if (!resolved) {
+        resolved = true;
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        }
+        resolve(response);
+      }
+    };
 
     ws.onopen = () => {
       console.log('[ElevenLabs] Connected to Agent WS');
-      // Send the user's text message
-      // Protocol for sending text: { "text": "Hello", "try_trigger_generation": true }
-      // Or just { "text": "Hello" }
+      // Send the user's text message as user_audio_chunk with base64 text? 
+      // OR special "user_message" event?
+      // Based on ElevenLabs ConvAI protocol, for text input we might need:
+      // { "user_audio_chunk": base64EncodedAudio } for audio
+      // For text-only (chat mode), let's try: { "text": "Hello" }
+      // Or some agents accept: { "type": "user_message", "user_message": { "text": "Hello" } }
+      
+      // Trying the simple text approach first:
       const payload = {
         text: message,
         try_trigger_generation: true
@@ -53,62 +68,69 @@ export async function sendChatMessage(message: string, conversationId?: string):
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data.toString());
-        console.log('[ElevenLabs] WS Message:', data.type);
+        console.log('[ElevenLabs] WS Message:', data.type, JSON.stringify(data).substring(0, 200));
+
+        if (data.type === 'ping') {
+          // Respond to keep connection alive
+          ws.send(JSON.stringify({ type: 'pong', event_id: data.ping_event?.event_id }));
+        }
 
         if (data.type === 'agent_response') {
-          // data.agent_response_event.agent_response might be audio?
-          // We need text.
-          // Check documentation structure. Usually:
-          // { type: "agent_response", agent_response_event: { agent_response: "Base64Audio", text: "Hello there" } } ?
-          // Actually, search result mentions "agent_response" events.
-          // Let's assume we capture the text if available.
-          // If no text field, we might fail.
-          // But "Chat Mode" exists.
-
-          // Inspecting common fields:
-          const responseText = data.agent_response_event?.agent_response || ""; 
-          // Note: usually 'agent_response' in the event IS the audio base64 in some versions.
-          // But transcript?
+          // Structure varies. Common patterns:
+          // { type: "agent_response", agent_response_event: { agent_response: "text here" } }
+          // OR: { type: "agent_response", agent_response_event: { response: "text" } }
+          // OR: { type: "agent_response", text: "..." }
+          const evt = data.agent_response_event || data;
+          const text = evt.agent_response || evt.response || evt.text || data.text || "";
           
-          // Let's look for "transcript" type events on 'audios' or specific text events.
-          // However, assuming for this hackathon we might just get the confirmation it's working
-          // or ideally the text.
-          
-          // If we receive audio, we can't easily convert to text here without STT.
-          // BUT, we want text-to-text.
-          
-          if (responseText) {
-             // It's possible this is audio.
+          if (text && typeof text === 'string' && text.length > 0) {
+            agentText += text;
           }
         }
-        
-        // Listen for "agent_response_correction" or just "agent_response" with text?
-        // Let's try to capture ANY text field.
-        
+
+        // Some implementations send "agent_response_correction" with final text
+        if (data.type === 'agent_response_correction') {
+          const correctedText = data.agent_response_correction_event?.corrected_response || data.corrected_response || "";
+          if (correctedText) {
+            agentText = correctedText; // Replace with corrected version
+          }
+        }
+
+        // Look for end-of-turn or final message indicator
+        // Some agents send "audio" with is_final flag or "end_of_response" type
+        if (data.type === 'audio' && data.audio_event?.end_of_stream) {
+          // Audio stream finished, if we have text, resolve
+          if (agentText) {
+            resolveOnce({ conversation_id, message: agentText });
+          }
+        }
+
       } catch (e) {
         console.error('Error parsing WS message', e);
       }
     };
     
-    // TIMEOUT / Safety
+    // TIMEOUT / Safety - wait longer for full response
     setTimeout(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.close();
-        }
-        // Fallback or Partial response
-        resolve({
+        resolveOnce({
             conversation_id,
-            message: "Agent received message (Text response integration pending verify)" 
+            message: agentText || "Agent processing... (no text response received)"
         });
-    }, 5000);
+    }, 10000);
 
     ws.onerror = (error) => {
       console.error('[ElevenLabs] WS Error:', error);
-      reject(error);
+      if (!resolved) {
+        reject(error);
+      }
     };
     
     ws.onclose = () => {
        console.log('[ElevenLabs] WS Closed');
+       // If we have accumulated text but didn't resolve yet, do it now
+       if (!resolved && agentText) {
+         resolveOnce({ conversation_id, message: agentText });
+       }
     };
   });
 }
