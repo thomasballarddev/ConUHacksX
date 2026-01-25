@@ -48,7 +48,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp }) => {
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 lg:p-12 relative bg-bg-cream">
 
 
-        <div className="w-full max-w-[440px] mt-16 md:mt-0">
+        <div className="w-full max-w-[440px]">
           <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-sm border border-black/5">
             <div className="text-center mb-10">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-soft-cream mb-6">

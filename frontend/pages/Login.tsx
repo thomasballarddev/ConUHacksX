@@ -48,9 +48,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       </div>
 
 
-      {/* Right: Form Section */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 lg:p-12 relative bg-bg-cream">
-        <div className="w-full max-w-[440px] mt-16 md:mt-0">
+        <div className="w-full max-w-[440px]">
           <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-[0_8px_40px_rgba(0,0,0,0.03)] border border-black/5">
             <div className="text-center mb-10">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-cream mb-6">
@@ -111,19 +110,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               Don't have an account? <a href="#/signup" className="font-bold text-primary hover:underline">Sign up</a>
             </p>
           </div>
+
+          <footer className="py-8 text-center w-full space-y-6">
+            <p className="serif-font text-gray-400 italic text-lg px-4 opacity-80">
+              "Health is everything. Don't settle."
+            </p>
+            <div className="flex justify-center gap-6 text-gray-300">
+               <span className="material-symbols-outlined text-xl">verified_user</span>
+               <span className="material-symbols-outlined text-xl">shield</span>
+               <span className="material-symbols-outlined text-xl">info</span>
+            </div>
+          </footer>
         </div>
-
-        <footer className="py-12 text-center w-full mt-auto space-y-6">
-          <p className="serif-font text-gray-400 italic text-lg px-4 opacity-80">
-            "Health is everything. Don't settle."
-          </p>
-          <div className="flex justify-center gap-6 text-gray-300">
-             <span className="material-symbols-outlined text-xl">verified_user</span>
-             <span className="material-symbols-outlined text-xl">shield</span>
-             <span className="material-symbols-outlined text-xl">info</span>
-          </div>
-
-        </footer>
       </div>
     </div>
   );
