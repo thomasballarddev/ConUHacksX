@@ -23,8 +23,8 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
       </div>
       
       <div className="flex-1 overflow-hidden flex flex-col">
-        {/* Map Placeholder */}
-        <div className="h-1/2 bg-gray-100 relative flex-shrink-0">
+        {/* Map Container */}
+        <div className="min-h-[300px] h-1/2 bg-gray-100 relative flex-shrink-0">
           <Map
             initialViewState={{
               longitude: -122.41669,
