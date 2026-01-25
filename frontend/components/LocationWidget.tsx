@@ -1,19 +1,56 @@
-import React, { useRef, useCallback } from 'react';
-import Map, { Marker, NavigationControl, MapRef } from "react-map-gl/mapbox";
+import React, { useRef, useCallback, useState, useEffect } from 'react';
+import Map, { Marker, NavigationControl, MapRef, Source, Layer } from "react-map-gl/mapbox";
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useLocation } from '../contexts/LocationContext';
+
+interface Clinic {
+  id: string;
+  name: string;
+  address: string;
+  distance: number;
+  longitude: number;
+  latitude: number;
+}
 
 interface LocationWidgetProps {
   onClose?: () => void;
   onSelect?: () => void;
 }
 
+const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
+
+// Base location: 1450 Guy St, Montreal, Quebec H3H 0A1
+const BASE_LOCATION = { longitude: -73.5791, latitude: 45.4953 };
+
+// Hardcoded nearby clinics
+const NEARBY_CLINICS: Clinic[] = [
+  {
+    id: 'clinic-1',
+    name: 'Clinique Médicale Crescent',
+    address: '1198 Crescent St, Montreal, Quebec H3G 2A9',
+    longitude: -73.5772,
+    latitude: 45.4997,
+    distance: 0.3
+  },
+  {
+    id: 'clinic-2',
+    name: 'Priveo Santé',
+    address: '3550 Chem. de la Côte-des-Neiges bureau 490, Montreal, Quebec H3H 1V4',
+    longitude: -73.6097,
+    latitude: 45.4955,
+    distance: 1.2
+  }
+];
+
 const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) => {
   const { userLocation } = useLocation();
   const mapRef = useRef<MapRef>(null);
+  const [clinics] = useState<Clinic[]>(NEARBY_CLINICS);
+  const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
+  const [routeGeoJson, setRouteGeoJson] = useState<GeoJSON.Feature | null>(null);
   
-  // Default to San Francisco if no user location
-  const mapCenter = userLocation || { longitude: -122.41669, latitude: 37.7853 };
+  // Use user location or default to base location (1450 Guy St)
+  const mapCenter = userLocation || BASE_LOCATION;
 
   // Force map resize when it loads
   const onMapLoad = useCallback(() => {
@@ -22,13 +59,74 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
     }
   }, []);
 
+  // Calculate distance between two points (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Get route to selected clinic
+  const getRoute = async (clinic: Clinic) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/` +
+        `${mapCenter.longitude},${mapCenter.latitude};${clinic.longitude},${clinic.latitude}?` +
+        `geometries=geojson&` +
+        `access_token=${MAPBOX_TOKEN}`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes[0]) {
+        const route = data.routes[0];
+        setRouteGeoJson({
+          type: 'Feature',
+          properties: {},
+          geometry: route.geometry
+        });
+        
+        // Fit map to show the route
+        if (mapRef.current) {
+          const coordinates = route.geometry.coordinates;
+          const bounds = coordinates.reduce(
+            (bounds: any, coord: number[]) => bounds.extend(coord),
+            new (window as any).mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+          );
+          mapRef.current.fitBounds(bounds, { padding: 50 });
+        }
+      }
+    } catch (error) {
+      console.error('Error getting route:', error);
+    }
+  };
+
+  // Handle clinic selection
+  const handleClinicSelect = (clinic: Clinic) => {
+    setSelectedClinic(clinic);
+    getRoute(clinic);
+  };
+
+  // Handle final selection
+  const handleConfirmSelection = () => {
+    if (onSelect) {
+      onSelect();
+    }
+  };
+
   return (
     <div className="h-full bg-soft-cream flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 w-full">
       <div className="p-6 border-b border-black/5 flex justify-between items-center bg-white/50 backdrop-blur-sm flex-shrink-0">
         <div>
           <h2 className="serif-font text-3xl text-primary">Find Nearby Doctors</h2>
           <p className="text-gray-500 text-xs font-medium mt-1">
-            {userLocation ? 'Showing clinics near your location' : 'Showing clinics within 5 miles'}
+            {userLocation ? 'Showing clinics near your location' : 'Enable location to find nearby clinics'}
           </p>
         </div>
         {onClose && (
@@ -51,11 +149,27 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
             }}
             style={{width: '100%', height: '100%'}}
             mapStyle="mapbox://styles/mapbox/light-v11"
-            mapboxAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
+            mapboxAccessToken={MAPBOX_TOKEN}
             onLoad={onMapLoad}
             reuseMaps
           >
             <NavigationControl position="bottom-right" />
+            
+            {/* Route line */}
+            {routeGeoJson && (
+              <Source id="route" type="geojson" data={routeGeoJson}>
+                <Layer
+                  id="route-line"
+                  type="line"
+                  paint={{
+                    'line-color': '#3b82f6',
+                    'line-width': 4,
+                    'line-opacity': 0.8
+                  }}
+                />
+              </Source>
+            )}
+            
             {/* User's location marker */}
             <Marker longitude={mapCenter.longitude} latitude={mapCenter.latitude} anchor="bottom">
               <div className="relative">
@@ -63,41 +177,67 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
               </div>
             </Marker>
             
-            {/* Nearby clinics markers */}
-            <Marker longitude={mapCenter.longitude + 0.008} latitude={mapCenter.latitude - 0.005} anchor="bottom">
-              <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
-            </Marker>
-            <Marker longitude={mapCenter.longitude - 0.012} latitude={mapCenter.latitude + 0.008} anchor="bottom">
-              <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
-            </Marker>
+            {/* Clinic markers */}
+            {clinics.map((clinic, index) => (
+              <Marker 
+                key={clinic.id} 
+                longitude={clinic.longitude} 
+                latitude={clinic.latitude} 
+                anchor="bottom"
+                onClick={() => handleClinicSelect(clinic)}
+              >
+                <div className={`cursor-pointer transition-transform ${selectedClinic?.id === clinic.id ? 'scale-125' : 'hover:scale-110'}`}>
+                  <span className={`material-symbols-outlined text-3xl drop-shadow-md ${
+                    selectedClinic?.id === clinic.id ? 'text-blue-500' : 'text-red-500'
+                  }`}>location_on</span>
+                </div>
+              </Marker>
+            ))}
           </Map>
         </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-6">
-           {[
-             { name: 'City Health Center', dist: '0.8 miles', rate: '4.8', tags: ['GP', 'Urgent Care'] },
-             { name: 'Prime Care Medical', dist: '1.2 miles', rate: '4.5', tags: ['Diagnostics'] },
-             { name: 'St. Mary Diagnostics', dist: '2.4 miles', rate: '4.9', tags: ['Cardiology'] }
-           ].map(clinic => (
-             <div key={clinic.name} className="bg-white p-6 rounded-[32px] border border-black/5 hover:border-primary transition-all group cursor-pointer shadow-sm hover:shadow-md">
-               <div className="flex justify-between items-start mb-3">
-                 <h3 className="font-black text-xl text-primary leading-tight">{clinic.name}</h3>
-                 <span className="text-xs font-bold text-gray-400 whitespace-nowrap ml-2 bg-gray-50 px-2 py-1 rounded-lg">{clinic.dist}</span>
-               </div>
-               <div className="flex items-center gap-1 text-orange-500 mb-4">
-                 <span className="material-symbols-outlined text-[16px] fill-1">star</span>
-                 <span className="text-sm font-black">{clinic.rate}</span>
-               </div>
-               <div className="flex flex-wrap gap-2 mb-5">
-                 {clinic.tags.map(t => <span key={t} className="px-3 py-1.5 bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 rounded-xl">{t}</span>)}
-               </div>
-               <button onClick={onSelect} className="w-full bg-primary text-white py-3.5 rounded-2xl text-xs font-black shadow-lg shadow-black/5 hover:bg-black transition-all">
-                 Select This Center
-               </button>
-             </div>
-           ))}
-      </div>
+        {/* Clinic List */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+          {clinics.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
+              <p>No clinics found nearby</p>
+            </div>
+          ) : (
+            clinics.map((clinic, index) => (
+              <div 
+                key={clinic.id} 
+                onClick={() => handleClinicSelect(clinic)}
+                className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-md ${
+                  selectedClinic?.id === clinic.id 
+                    ? 'border-blue-500 ring-2 ring-blue-100' 
+                    : 'border-black/5 hover:border-primary'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="size-6 rounded-full bg-red-50 flex items-center justify-center text-red-500 text-xs font-black">
+                      {index + 1}
+                    </span>
+                    <h3 className="font-bold text-lg text-primary leading-tight">{clinic.name}</h3>
+                  </div>
+                  <span className="text-xs font-bold text-gray-400 whitespace-nowrap ml-2 bg-gray-50 px-2 py-1 rounded-lg">
+                    {clinic.distance.toFixed(1)} mi
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mb-3 line-clamp-2 ml-8">{clinic.address}</p>
+                {selectedClinic?.id === clinic.id && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleConfirmSelection(); }}
+                    className="w-full bg-primary text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-black/5 hover:bg-black transition-all mt-2"
+                  >
+                    Select This Center
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
