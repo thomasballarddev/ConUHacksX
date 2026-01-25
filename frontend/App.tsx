@@ -6,10 +6,10 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Emergency from './pages/Emergency';
-import Booking from './pages/Booking';
 import Login from './pages/Login';
 import HealthProfile from './pages/HealthProfile';
 import Chat from './pages/Chat';
+import Settings from './pages/Settings';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -37,8 +37,8 @@ const App: React.FC = () => {
           <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
           <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
           <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
-          <Route path="/booking" element={<ProtectedLayout><Booking /></ProtectedLayout>} />
           <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
+          <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

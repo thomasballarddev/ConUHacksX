@@ -47,15 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
             <span className="material-symbols-outlined text-xl">home</span>
             <span className="text-sm">Home</span>
           </NavLink>
-          <NavLink 
-            to="/booking" 
-            className={({ isActive }) => 
-              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
-            }
-          >
-            <span className="material-symbols-outlined text-xl">calendar_month</span>
-            <span className="text-sm">Booking Call</span>
-          </NavLink>
+
           <NavLink 
             to="/profile" 
             className={({ isActive }) => 
@@ -83,10 +75,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
       </div>
 
       <div className="p-6 border-t border-black/5 space-y-4">
-        <button className="w-full flex items-center space-x-3 text-gray-500 hover:text-primary transition-colors px-2">
+        <NavLink 
+          to="/settings"
+          className={({ isActive }) => 
+            `w-full flex items-center space-x-3 px-2 py-2 rounded-xl transition-colors ${isActive ? 'text-primary font-medium' : 'text-gray-500 hover:text-primary'}`
+          }
+        >
           <span className="material-symbols-outlined">settings</span>
           <span className="text-sm font-medium">Settings</span>
-        </button>
+        </NavLink>
         <button 
           onClick={onLogout}
           className="w-full flex items-center justify-center space-x-3 bg-white border border-black/5 text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 py-3 rounded-2xl transition-all shadow-sm font-bold text-sm"
