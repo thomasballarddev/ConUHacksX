@@ -449,42 +449,51 @@ wss.on('connection', async (twilioWs: WebSocket) => {
 
       elevenLabsWs.on('open', () => {
         console.log('[ElevenLabs] Connected to Conversational AI');
-
-        // Send initial configuration
-        const initialConfig = {
-          type: 'conversation_initiation_client_data',
-          conversation_config_override: {
-            agent: {
-              prompt: {
-                prompt: customParameters?.prompt || 'You are a helpful health assistant named Health.me. Help the user with their medical questions.'
-              },
-              first_message: customParameters?.first_message || 'Hello! This is Health.me calling. How can I assist you today?'
-            }
-          }
-        };
-
-        elevenLabsWs!.send(JSON.stringify(initialConfig));
+        // Agent is configured in ElevenLabs dashboard - no need to send config override
+        // The agent will start speaking with its configured greeting
       });
 
       elevenLabsWs.on('message', (data: RawData) => {
         try {
           const message = JSON.parse(data.toString());
+          const msgType = message.type;
 
-          switch (message.type) {
+          // Log all message types
+          if (msgType !== 'ping') {
+            console.log(`[ElevenLabs] Event: ${msgType}`);
+            if (msgType === 'audio' || msgType === 'agent_response' || msgType === 'user_transcript') {
+              console.log(`[ElevenLabs] Full message:`, JSON.stringify(message).substring(0, 300));
+            }
+          }
+
+          switch (msgType) {
             case 'audio':
-              if (streamSid) {
-                const audioPayload = message.audio?.chunk || message.audio_event?.audio_base_64;
-                if (audioPayload) {
+              console.log('[ElevenLabs] Audio message received');
+              const audioPayload = message.audio?.chunk || message.audio_event?.audio_base_64;
+              if (audioPayload) {
+                // Decode to inspect format
+                const audioBuffer = Buffer.from(audioPayload, 'base64');
+                const firstBytes = Array.from(audioBuffer.slice(0, 12)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+                console.log('[ElevenLabs] Audio format inspection:');
+                console.log('  - First bytes:', firstBytes);
+                console.log('  - Starts with RIFF header:', audioBuffer.toString('ascii', 0, 4) === 'RIFF');
+                console.log('  - Payload size:', audioPayload.length, 'bytes (base64) =', Math.floor(audioBuffer.length * 3 / 4), 'bytes (decoded)');
+
+                if (streamSid) {
+                  console.log(`[Twilio] Sending audio to streamSid: ${streamSid}`);
                   twilioWs.send(JSON.stringify({
                     event: 'media',
                     streamSid,
                     media: { payload: audioPayload }
                   }));
+                } else {
+                  console.log('[ElevenLabs] Audio received but streamSid not set yet');
                 }
               }
               break;
 
             case 'interruption':
+              console.log('[ElevenLabs] Interruption event');
               if (streamSid) {
                 twilioWs.send(JSON.stringify({ event: 'clear', streamSid }));
               }
@@ -501,8 +510,8 @@ wss.on('connection', async (twilioWs: WebSocket) => {
 
             case 'agent_response':
               const agentText = message.agent_response_event?.agent_response;
+              console.log(`[ElevenLabs] Agent response: "${agentText}"`);
               if (agentText && callSid) {
-                console.log(`[Agent] ${agentText}`);
                 const callData = activeCalls.get(callSid);
                 emitTranscriptUpdate(callSid, 'agent', agentText, callData?.sessionId);
                 if (callData) {
@@ -513,8 +522,8 @@ wss.on('connection', async (twilioWs: WebSocket) => {
 
             case 'user_transcript':
               const userText = message.user_transcription_event?.user_transcript;
+              console.log(`[ElevenLabs] User transcript: "${userText}"`);
               if (userText && callSid) {
-                console.log(`[User] ${userText}`);
                 const callData = activeCalls.get(callSid);
                 emitTranscriptUpdate(callSid, 'user', userText, callData?.sessionId);
                 if (callData) {
@@ -522,6 +531,11 @@ wss.on('connection', async (twilioWs: WebSocket) => {
                 }
               }
               break;
+
+            default:
+              if (msgType !== 'ping') {
+                console.log(`[ElevenLabs] Unhandled message type: ${msgType}`);
+              }
           }
         } catch (error) {
           console.error('[ElevenLabs] Error processing message:', error);
@@ -552,6 +566,7 @@ wss.on('connection', async (twilioWs: WebSocket) => {
           callSid = msg.start.callSid;
           customParameters = msg.start.customParameters;
           console.log(`[Twilio] Stream started - StreamSid: ${streamSid}, CallSid: ${callSid}`);
+          console.log(`[Twilio] Custom parameters:`, customParameters);
 
           // Update stored call data
           if (callSid && activeCalls.has(callSid)) {
@@ -561,6 +576,7 @@ wss.on('connection', async (twilioWs: WebSocket) => {
           }
 
           // Now set up ElevenLabs with the parameters
+          console.log('[Twilio] Setting up ElevenLabs...');
           setupElevenLabs();
           break;
 
