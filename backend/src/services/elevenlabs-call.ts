@@ -62,10 +62,16 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
     agent_id: AGENT_ID,
     agent_phone_number_id: TWILIO_PHONE_NUMBER,
     to_number: phoneNumber,
-    first_message: `Hello, this is the Health.me AI assistant calling on behalf of a patient. The patient has been experiencing ${reason} and would like to schedule an appointment. Do you have any available slots?`,
-    dynamic_variables: {
-      clinic_name: clinicName,
-      patient_symptoms: reason
+    conversation_initiation_client_data: {
+      conversation_config_override: {
+        agent: {
+          first_message: `Hello, this is the Health.me AI assistant calling on behalf of a patient. The patient has been experiencing ${reason} and would like to schedule an appointment. Do you have any available slots?`
+        }
+      },
+      dynamic_variables: {
+        clinic_name: clinicName,
+        symptoms: reason
+      }
     }
   };
   console.log('[ElevenLabs-Call] Sending payload:', JSON.stringify(payload, null, 2));
