@@ -1,6 +1,7 @@
 import { ElevenLabsClient } from '@elevenlabs/client';
 import { emitChatResponse } from './websocket.js';
 import dotenv from 'dotenv';
+import WebSocket from 'ws';
 
 dotenv.config({ path: '../.env' });
 
@@ -80,16 +81,19 @@ export async function sendChatMessage(message: string, sessionId: string = 'defa
         }, 500);
       };
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: any) => {
         try {
-          const data = JSON.parse(event.data.toString());
+          const rawData = typeof event.data === 'string' ? event.data : event.data.toString();
+          console.log('[ElevenLabs] Raw message:', rawData.substring(0, 200));
+          const data = JSON.parse(rawData);
           console.log('[ElevenLabs] Received:', data.type);
 
-          if (data.type === 'agent_response') {
-            fullResponse += (data.text || data.agent_response || '');
-          }
+          // Handle agent response - ElevenLabs format: agent_response_event.agent_response
+          if (data.type === 'agent_response' && data.agent_response_event) {
+            fullResponse = data.agent_response_event.agent_response || '';
+            console.log('[ElevenLabs] Agent response:', fullResponse);
 
-          if (data.type === 'agent_response_end' || data.type === 'conversation_end') {
+            // Resolve immediately on first agent response
             if (!hasResponded && fullResponse) {
               hasResponded = true;
 
@@ -105,21 +109,16 @@ export async function sendChatMessage(message: string, sessionId: string = 'defa
             }
           }
 
-          // Handle text chunk streaming
-          if (data.type === 'text' || data.type === 'agent_text') {
-            fullResponse += (data.text || '');
-          }
-
         } catch (e) {
           console.error('[ElevenLabs] Parse error:', e);
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('[ElevenLabs] WebSocket error:', error);
+      ws.onerror = (error: any) => {
+        console.error('[ElevenLabs] WebSocket error:', error.message || error);
         if (!hasResponded) {
           hasResponded = true;
-          reject(new Error('WebSocket connection error'));
+          reject(new Error('WebSocket connection error: ' + (error.message || 'unknown')));
         }
       };
 
