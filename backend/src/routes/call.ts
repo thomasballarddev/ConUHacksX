@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger } from '../services/websocket.js';
-import { initiateClinicCall, sendResponseToCall, getActiveCallStatus, setPendingSelectionCallback } from '../services/elevenlabs-call.js';
+import { initiateClinicCall, sendResponseToCall, getActiveCallStatus } from '../services/elevenlabs-call.js';
 import { TimeSlot } from '../types/index.js';
 
 const router = Router();
