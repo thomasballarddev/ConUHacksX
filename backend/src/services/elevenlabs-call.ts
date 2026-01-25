@@ -66,10 +66,9 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
     },
     body: JSON.stringify({
       agent_id: AGENT_ID,
-      agent_phone_number_id: TWILIO_PHONE_NUMBER, // Or use phone_number_id if you have one configured
-      customer_phone_number: phoneNumber,
+      agent_phone_number_id: TWILIO_PHONE_NUMBER,
+      to_number: phoneNumber,
       first_message: `Hello, this is the Health.me AI assistant calling on behalf of a patient. The patient has been experiencing ${reason} and would like to schedule an appointment. Do you have any available slots?`,
-      // Optional: pass dynamic variables for the agent
       dynamic_variables: {
         clinic_name: clinicName,
         patient_symptoms: reason
