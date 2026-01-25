@@ -30,17 +30,17 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   console.log(`[ElevenLabs-Call] Reason: ${reason}`);
   console.log(`[ElevenLabs-Call] Using AGENT_ID: ${AGENT_ID}`);
   console.log(`[ElevenLabs-Call] Using Twilio Phone: ${TWILIO_PHONE_NUMBER}`);
-  
+
   if (!API_KEY || !AGENT_ID) {
     throw new Error('Missing ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID');
   }
-  
+
   if (!TWILIO_PHONE_NUMBER) {
     throw new Error('Missing TWILIO_PHONE_NUMBER - required for outbound calls');
   }
-  
+
   const callId = `call_${Date.now()}`;
-  
+
   // Create active call record
   activeCall = {
     id: callId,
@@ -55,13 +55,21 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   // Emit call started event to frontend
   emitCallStarted(callId);
   console.log('[ElevenLabs-Call] Call started event emitted');
-  
+
   // Use the ElevenLabs Twilio outbound call API
   // This initiates an actual phone call using Twilio integration
+
+  // Override phone number if PHONE_NUMBER_TO_USE is set
+  let targetPhoneNumber = phoneNumber;
+  if (process.env.PHONE_NUMBER_TO_USE) {
+    console.log(`[ElevenLabs-Call] OVERRIDE: Redirecting call to ${process.env.PHONE_NUMBER_TO_USE} (instead of ${phoneNumber})`);
+    targetPhoneNumber = process.env.PHONE_NUMBER_TO_USE;
+  }
+
   const payload = {
     agent_id: AGENT_ID,
     agent_phone_number_id: TWILIO_PHONE_NUMBER,
-    to_number: phoneNumber,
+    to_number: targetPhoneNumber,
     conversation_initiation_client_data: {
       dynamic_variables: {
         clinic_name: clinicName,
@@ -83,31 +91,31 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   if (!outboundCallResponse.ok) {
     const errorText = await outboundCallResponse.text();
     console.error('[ElevenLabs-Call] Failed to initiate outbound call:', errorText);
-    
+
     // Update call state
     if (activeCall) {
       activeCall.state = 'ended';
       emitCallEnded(callId, [`Error: ${errorText}`]);
     }
-    
+
     throw new Error(`ElevenLabs outbound call error: ${outboundCallResponse.statusText} - ${errorText}`);
   }
 
   const callData = await outboundCallResponse.json();
   console.log('[ElevenLabs-Call] Outbound call initiated:', JSON.stringify(callData));
-  
+
   // Store the conversation ID for later reference
   if (activeCall) {
     activeCall.conversationId = callData.conversation_id || callData.call_sid || callId;
     activeCall.state = 'active';
   }
-  
+
   // Note: To get real-time updates, you'd need to set up a webhook
   // For now, the ElevenLabs agent handles the conversation autonomously
   // When the agent uses the webhook tool, your /call/show-calendar endpoint will be hit
-  
-  return { 
-    callId, 
+
+  return {
+    callId,
     status: 'call_initiated',
     ...callData
   };
@@ -126,7 +134,7 @@ function handleAgentMessage(data: any) {
       // No WebSocket to respond to in outbound call mode
       // This would be handled via webhook
       break;
-    
+
     case 'agent_response':
       const agentText = data.agent_response_event?.agent_response || '';
       if (agentText) {
@@ -134,21 +142,21 @@ function handleAgentMessage(data: any) {
         emitTranscriptUpdate(activeCall.id, `Agent: ${agentText}`);
       }
       break;
-    
+
     case 'user_transcript':
       // This is the receptionist's response (from the phone call STT)
       const userText = data.user_transcript_event?.user_transcript || '';
       if (userText) {
         activeCall.transcript.push(`Receptionist: ${userText}`);
         emitTranscriptUpdate(activeCall.id, `Receptionist: ${userText}`);
-        
+
         // Check if receptionist is offering times (simple heuristic)
         if (containsSchedulingInfo(userText)) {
           handleSchedulingOffer(userText);
         }
       }
       break;
-    
+
     case 'client_tool_call':
       // The ElevenLabs agent is requesting client-side action
       handleClientToolCall(data.client_tool_call);
@@ -170,17 +178,17 @@ function containsSchedulingInfo(text: string): boolean {
  */
 function handleSchedulingOffer(text: string) {
   if (!activeCall) return;
-  
+
   console.log('[ElevenLabs-Call] Detected scheduling offer, pausing for user input');
-  
+
   // Put call on hold
   activeCall.state = 'on_hold';
   activeCall.pendingUserResponse = true;
   emitCallOnHold(activeCall.id);
-  
+
   // Parse available times (simplified - in production use NLP)
   const slots: TimeSlot[] = parseTimeSlotsFromText(text);
-  
+
   // Show calendar to user
   emitShowCalendar(slots);
 }
@@ -190,17 +198,17 @@ function handleSchedulingOffer(text: string) {
  */
 function handleClientToolCall(toolCall: any) {
   if (!activeCall) return;
-  
+
   console.log('[ElevenLabs-Call] Client tool call:', toolCall.tool_name);
-  
+
   if (toolCall.tool_name === 'request_schedule_selection') {
     // Agent is asking user to select a time
     const slots = toolCall.parameters?.available_slots || [];
-    
+
     activeCall.state = 'on_hold';
     activeCall.pendingUserResponse = true;
     emitCallOnHold(activeCall.id);
-    
+
     // Parse slots if they're strings, or use as-is if already TimeSlot format
     const parsedSlots: TimeSlot[] = slots.map((s: any) => {
       if (typeof s === 'string') {
@@ -208,7 +216,7 @@ function handleClientToolCall(toolCall: any) {
       }
       return s;
     });
-    
+
     emitShowCalendar(parsedSlots.length > 0 ? parsedSlots : [
       { day: 'TUE', date: '28', time: '02:00 PM' },
       { day: 'TUE', date: '28', time: '04:00 PM' }
@@ -224,14 +232,14 @@ export async function sendResponseToCall(response: string): Promise<boolean> {
     console.error('[ElevenLabs-Call] No active call to send response to');
     return false;
   }
-  
+
   console.log('[ElevenLabs-Call] Sending user response to call:', response);
-  
+
   // For outbound calls via Twilio, we need to send the response via the conversation API
   // This tells the ElevenLabs agent what the user selected
   try {
     const API_KEY = process.env.ELEVENLABS_API_KEY;
-    
+
     // Use the ElevenLabs API to send a message to the ongoing conversation
     // Note: This is a simplified approach - in production you might use webhooks
     const res = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${activeCall.conversationId}/send-message`, {
@@ -244,12 +252,12 @@ export async function sendResponseToCall(response: string): Promise<boolean> {
         message: `The patient has selected: ${response}. Please confirm this appointment time with the receptionist.`
       })
     });
-    
+
     if (!res.ok) {
       console.error('[ElevenLabs-Call] Failed to send response:', await res.text());
       return false;
     }
-    
+
     activeCall.state = 'active';
     activeCall.pendingUserResponse = false;
     return true;
@@ -272,25 +280,25 @@ export function getActiveCallStatus(): ActiveCall | null {
 function parseTimeSlotsFromText(text: string): TimeSlot[] {
   // Simple parsing - in production use NLP/LLM
   const slots: TimeSlot[] = [];
-  
+
   // Look for time patterns like "2pm", "2:00 PM", "14:00"
   const timePattern = /(\d{1,2}):?(\d{2})?\s*(am|pm)?/gi;
   const matches = text.match(timePattern) || [];
-  
+
   const today = new Date();
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  
+
   matches.slice(0, 4).forEach((match, index) => {
     const date = new Date(today);
     date.setDate(date.getDate() + index + 1);
-    
+
     slots.push({
       day: days[date.getDay()],
       date: String(date.getDate()),
       time: match.toUpperCase().replace(/(\d)([AP])/, '$1 $2') + (match.toLowerCase().includes('m') ? '' : ' PM')
     });
   });
-  
+
   // Fallback slots if none parsed
   if (slots.length === 0) {
     return [
@@ -298,7 +306,7 @@ function parseTimeSlotsFromText(text: string): TimeSlot[] {
       { day: 'WED', date: '29', time: '10:00 AM' }
     ];
   }
-  
+
   return slots;
 }
 
@@ -310,9 +318,9 @@ function parseTimeSlotFromString(s: string): TimeSlot {
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const dayMatch = s.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
   const timeMatch = s.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
-  
+
   const today = new Date();
-  
+
   return {
     day: dayMatch ? dayMatch[1].substring(0, 3).toUpperCase() : days[today.getDay()],
     date: String(today.getDate() + 1),
