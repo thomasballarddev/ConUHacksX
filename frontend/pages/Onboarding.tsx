@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import healthImage from '../assets/health.jpg';
 import demoProfileData from '../assets/demoProfile.json';
+import { useAuth } from '../contexts/AuthContext';
+import { saveUserProfile } from '../src/firestore';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -36,6 +38,7 @@ const COMMON_CONDITIONS = ['Diabetes', 'Hypertension', 'Asthma', 'Heart Disease'
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [isAnimating, setIsAnimating] = useState(false);
@@ -134,18 +137,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const handleComplete = async () => {
     setShowConfetti(true);
     
-    try {
-      await fetch('http://localhost:3001/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    // Save profile to Firestore
+    if (user) {
+      try {
+        await saveUserProfile(user.uid, {
           ...profile,
-          onboardingCompleted: true,
           createdAt: new Date().toISOString()
-        })
-      });
-    } catch (error) {
-      console.error('Failed to save profile:', error);
+        });
+        console.log('[Onboarding] Profile saved to Firestore');
+      } catch (error) {
+        console.error('Failed to save profile to Firestore:', error);
+      }
     }
 
     setTimeout(() => {

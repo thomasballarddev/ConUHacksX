@@ -102,3 +102,78 @@ export const getOrCreateActiveChat = async (userId: string): Promise<string> => 
   await setDoc(activeChatRef, { chatId });
   return chatId;
 };
+
+// =====================
+// USER PROFILE FUNCTIONS
+// =====================
+
+export interface UserProfile {
+  personalInfo: {
+    fullName: string;
+    dateOfBirth: string;
+    gender: string;
+  };
+  physicalStats: {
+    height: string;
+    weight: string;
+  };
+  medicalConditions: {
+    conditions: string[];
+    notes: string;
+  };
+  emergencyContact: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  onboardingCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get user profile from Firestore
+ */
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  try {
+    const profileRef = doc(db, 'users', userId, 'profile', 'data');
+    const profileSnap = await getDoc(profileRef);
+    
+    if (profileSnap.exists()) {
+      return profileSnap.data() as UserProfile;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    return null;
+  }
+};
+
+/**
+ * Save user profile to Firestore
+ */
+export const saveUserProfile = async (
+  userId: string,
+  profileData: Partial<UserProfile>
+): Promise<void> => {
+  try {
+    const profileRef = doc(db, 'users', userId, 'profile', 'data');
+    await setDoc(profileRef, {
+      ...profileData,
+      onboardingCompleted: true,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    console.log('[Firestore] User profile saved successfully');
+  } catch (error) {
+    console.error('Error saving user profile:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check if user has completed onboarding
+ */
+export const hasCompletedOnboarding = async (userId: string): Promise<boolean> => {
+  const profile = await getUserProfile(userId);
+  return profile?.onboardingCompleted === true;
+};

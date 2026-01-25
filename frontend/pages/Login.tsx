@@ -35,7 +35,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       await signInWithGoogle();
       await requestLocation();
       onLogin();
-      navigate('/chat');
+      navigate('/onboarding'); // Redirect to onboarding for new users
     } catch (error) {
       console.error('Google sign-in failed:', error);
     } finally {
