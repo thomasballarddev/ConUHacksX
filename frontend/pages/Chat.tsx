@@ -163,6 +163,32 @@ const Chat: React.FC = () => {
     setMessages([{ role: 'model', text: 'New conversation started. How can I assist you with your health today?' }]);
   };
 
+  const handleClinicSelect = async (clinic: { name: string; phone?: string }) => {
+    setActiveWidget('none');
+    setIsCallActive(true);
+    setMessages(prev => [...prev, 
+      { role: 'model', text: `Calling ${clinic.name} to schedule your appointment... Our AI assistant will speak with the receptionist on your behalf.` }
+    ]);
+    
+    try {
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone: clinic.phone || '+14388083471',
+          reason: 'Patient experiencing symptoms and needs an appointment',
+          clinic_name: clinic.name
+        })
+      });
+    } catch (error) {
+      console.error('Failed to initiate call:', error);
+      setMessages(prev => [...prev, 
+        { role: 'model', text: 'Sorry, there was an issue connecting the call. Please try again.' }
+      ]);
+      setIsCallActive(false);
+    }
+  };
+
   const handleAppointmentConfirm = async (details: { day: string; date: string; time: string }) => {
     setActiveWidget('none');
     const appointmentText = `${details.day}, the ${details.date} at ${details.time}`;
@@ -336,7 +362,7 @@ const Chat: React.FC = () => {
               {activeWidget === 'location' && (
                 <LocationWidget
                   onClose={() => setActiveWidget('none')}
-                  onSelect={() => setActiveWidget('schedule')}
+                  onClinicSelect={handleClinicSelect}
                   clinics={clinics}
                 />
               )}

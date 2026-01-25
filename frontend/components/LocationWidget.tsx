@@ -3,32 +3,44 @@ import Map, { Marker, NavigationControl, MapRef } from "react-map-gl/mapbox";
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useLocation } from '../contexts/LocationContext';
 
-interface LocationWidgetProps {
-  onClose?: () => void;
-  onSelect?: () => void;
-  clinics?: any[]; // Using any for hackathon speed, strictly should be Clinic interface
+interface Clinic {
+  name: string;
+  dist: string;
+  rate: string;
+  tags: string[];
+  phone?: string;
 }
 
-const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect, clinics = [] }) => {
+interface LocationWidgetProps {
+  onClose?: () => void;
+  onClinicSelect?: (clinic: Clinic) => void;
+  clinics?: Clinic[];
+}
+
+const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect, clinics = [] }) => {
   const { userLocation } = useLocation();
   const mapRef = useRef<MapRef>(null);
 
-  // Default to San Francisco if no user location
   const mapCenter = userLocation || { longitude: -122.41669, latitude: 37.7853 };
 
-  // Force map resize when it loads
   const onMapLoad = useCallback(() => {
     if (mapRef.current) {
       mapRef.current.resize();
     }
   }, []);
 
-  // Fallback if empty
-  const displayClinics = clinics.length > 0 ? clinics : [
-     { name: 'City Health Center', dist: '0.8 miles', rate: '4.8', tags: ['GP', 'Urgent Care'] },
-     { name: 'Prime Care Medical', dist: '1.2 miles', rate: '4.5', tags: ['Diagnostics'] },
-     { name: 'St. Mary Diagnostics', dist: '2.4 miles', rate: '4.9', tags: ['Cardiology'] }
+  const displayClinics: Clinic[] = clinics.length > 0 ? clinics : [
+     { name: 'City Health Center', dist: '0.8 miles', rate: '4.8', tags: ['GP', 'Urgent Care'], phone: '+14388083471' },
+     { name: 'Prime Care Medical', dist: '1.2 miles', rate: '4.5', tags: ['Diagnostics'], phone: '+14388083471' },
+     { name: 'St. Mary Diagnostics', dist: '2.4 miles', rate: '4.9', tags: ['Cardiology'], phone: '+14388083471' }
   ];
+
+  const handleSelectClinic = (clinic: Clinic) => {
+    if (onClinicSelect) {
+      onClinicSelect(clinic);
+    }
+  };
+
   return (
     <div className="h-full bg-soft-cream flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 w-full">
       <div className="p-6 border-b border-black/5 flex justify-between items-center bg-white/50 backdrop-blur-sm flex-shrink-0">
@@ -63,14 +75,12 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect, clin
             reuseMaps
           >
             <NavigationControl position="bottom-right" />
-            {/* User's location marker */}
             <Marker longitude={mapCenter.longitude} latitude={mapCenter.latitude} anchor="bottom">
               <div className="relative">
                 <div className="size-6 bg-primary rounded-full border-4 border-white shadow-2xl pulse-red"></div>
               </div>
             </Marker>
             
-            {/* Nearby clinics markers */}
             <Marker longitude={mapCenter.longitude + 0.008} latitude={mapCenter.latitude - 0.005} anchor="bottom">
               <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
             </Marker>
@@ -94,8 +104,12 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect, clin
                <div className="flex flex-wrap gap-2 mb-5">
                  {clinic.tags.map(t => <span key={t} className="px-3 py-1.5 bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 rounded-xl">{t}</span>)}
                </div>
-               <button onClick={onSelect} className="w-full bg-primary text-white py-3.5 rounded-2xl text-xs font-black shadow-lg shadow-black/5 hover:bg-black transition-all">
-                 Select This Center
+               <button 
+                 onClick={() => handleSelectClinic(clinic)} 
+                 className="w-full bg-primary text-white py-3.5 rounded-2xl text-xs font-black shadow-lg shadow-black/5 hover:bg-black transition-all flex items-center justify-center gap-2"
+               >
+                 <span className="material-symbols-outlined text-sm">call</span>
+                 Call to Book Appointment
                </button>
              </div>
            ))}
