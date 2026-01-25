@@ -50,7 +50,7 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
               zoom: 14
             }}
             style={{width: '100%', height: '100%'}}
-            mapStyle="mapbox://styles/mapbox/streets-v12"
+            mapStyle="mapbox://styles/mapbox/light-v11"
             mapboxAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
             onLoad={onMapLoad}
             reuseMaps
