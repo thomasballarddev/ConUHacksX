@@ -98,6 +98,11 @@ const sessionData = [
   },
 ];
 
+import { useVoiceInput } from '../src/hooks/useVoiceInput';
+import AudioVisualizer from '../components/AudioVisualizer';
+
+// ... existing interfaces ...
+
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -117,6 +122,21 @@ const Chat: React.FC = () => {
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule' | 'question'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
+
+  // Voice Hook
+  const handleVoiceFinalResult = (text: string) => {
+    // Auto-send when silence is detected
+    handleSend(text);
+  };
+
+  const {
+    isListening,
+    transcript: voiceTranscript,
+    startListening,
+    stopListening,
+    audioData,
+    speak
+  } = useVoiceInput({ onFinalTranscript: handleVoiceFinalResult });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -207,6 +227,11 @@ const Chat: React.FC = () => {
     socket.on('chat_response', (msg) => {
       setIsLoading(false);
       setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
+      speak(msg.content, () => {
+        // Auto-restart listening after AI finishes speaking
+        // Add small delay to avoid picking up echo
+        setTimeout(() => startListening(), 500);
+      });
     });
 
     // Agent needs user input during call
@@ -227,14 +252,16 @@ const Chat: React.FC = () => {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [speak]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (textOverride?: string) => {
+    const textToSend = textOverride || input;
+    if (!textToSend.trim() || isLoading) return;
 
-    const userMsg = input.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setInput('');
+    // Use textOverride if provided, otherwise clear input state
+    if (!textOverride) setInput('');
+
+    setMessages(prev => [...prev, { role: 'user', text: textToSend }]);
     setIsLoading(true);
 
     try {
@@ -245,7 +272,7 @@ const Chat: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: userMsg,
+          message: textToSend,
           conversation_id: conversationId  // Include conversation_id for context
         })
       });
@@ -264,6 +291,10 @@ const Chat: React.FC = () => {
       // Gemini returns { message: "...", conversation_id: "..." }
       if (data.message) {
         setMessages(prev => [...prev, { role: 'model', text: data.message }]);
+        speak(data.message, () => {
+          // Auto-restart listening after AI finishes speaking
+          setTimeout(() => startListening(), 500);
+        });
       }
       setIsLoading(false);
 
@@ -299,23 +330,23 @@ const Chat: React.FC = () => {
   const handleClinicSelect = async (clinic: { name: string; phone?: string }) => {
     setActiveWidget('none');
     setIsCallActive(true);
-    setMessages(prev => [...prev, 
-      { role: 'model', text: `Calling ${clinic.name} to schedule your appointment... Our AI assistant will speak with the receptionist on your behalf.` }
+    setMessages(prev => [...prev,
+    { role: 'model', text: `Calling ${clinic.name} to schedule your appointment... Our AI assistant will speak with the receptionist on your behalf.` }
     ]);
-    
+
     try {
       await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           phone: '+18194755578', // Demo: always call this number
           clinic_name: clinic.name
         })
       });
     } catch (error) {
       console.error('Failed to initiate call:', error);
-      setMessages(prev => [...prev, 
-        { role: 'model', text: 'Sorry, there was an issue connecting the call. Please try again.' }
+      setMessages(prev => [...prev,
+      { role: 'model', text: 'Sorry, there was an issue connecting the call. Please try again.' }
       ]);
       setIsCallActive(false);
     }
@@ -324,7 +355,7 @@ const Chat: React.FC = () => {
   const handleAppointmentConfirm = async (details: { day: string; date: string; time: string }) => {
     setActiveWidget('none');
     const appointmentText = `${details.day}, the ${details.date} at ${details.time}`;
-    
+
     // Send selection to active call
     try {
       await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/respond`, {
@@ -332,14 +363,14 @@ const Chat: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ response: appointmentText })
       });
-      
+
       setMessages(prev => [...prev,
-        { role: 'model', text: `Great! I've told the clinic you'd like the appointment on ${appointmentText}. The receptionist is confirming now...` }
+      { role: 'model', text: `Great! I've told the clinic you'd like the appointment on ${appointmentText}. The receptionist is confirming now...` }
       ]);
     } catch (error) {
       console.error('Failed to send appointment selection:', error);
       setMessages(prev => [...prev,
-        { role: 'model', text: `Appointment selected: ${appointmentText}. (Note: Could not update the call)` }
+      { role: 'model', text: `Appointment selected: ${appointmentText}. (Note: Could not update the call)` }
       ]);
     }
   };
@@ -451,8 +482,8 @@ const Chat: React.FC = () => {
                   </div>
 
                   <div className={`rounded-3xl p-5 shadow-sm border border-black/5 ${msg.role === 'user'
-                      ? 'bg-primary text-white rounded-tr-none'
-                      : 'bg-white text-primary rounded-tl-none'
+                    ? 'bg-primary text-white rounded-tr-none'
+                    : 'bg-white text-primary rounded-tl-none'
                     }`}>
                     {msg.role === 'user' ? (
                       <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
@@ -504,29 +535,49 @@ const Chat: React.FC = () => {
                   <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">New</span>
                 </button>
 
-                <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
-                  <button className="p-3 text-gray-400 hover:text-primary transition-colors">
-                    <span className="material-symbols-outlined">attachment</span>
-                  </button>
-                  <input
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder:text-gray-400 py-3"
-                    placeholder="Ask about symptoms or bookings..."
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  />
-                  <button
-                    onClick={handleSend}
-                    disabled={isLoading || !input.trim()}
-                    className={`size-11 rounded-2xl transition-all flex items-center justify-center ${isLoading || !input.trim()
+                {isListening ? (
+                  <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                    <div className="flex-1 px-4">
+                      {/* Visualizer takes full width of container */}
+                      <AudioVisualizer audioData={audioData} />
+                    </div>
+                    <button
+                      onClick={stopListening}
+                      className="size-12 rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center mr-1"
+                      title="Cancel Voice Input"
+                    >
+                      <span className="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+                    <button
+                      onClick={() => startListening()}
+                      className="p-3 text-gray-400 hover:text-primary hover:bg-gray-50 rounded-full transition-all group"
+                      title="Voice Input"
+                    >
+                      <span className="material-symbols-outlined group-hover:scale-110 transition-transform">mic</span>
+                    </button>
+                    <input
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder:text-gray-400 py-3"
+                      placeholder="Ask about symptoms or bookings..."
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    />
+                    <button
+                      onClick={() => handleSend()}
+                      disabled={isLoading || !input.trim()}
+                      className={`size-11 rounded-2xl transition-all flex items-center justify-center ${isLoading || !input.trim()
                         ? 'bg-gray-100 text-gray-400'
                         : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
-                      }`}
-                  >
-                    <span className="material-symbols-outlined">arrow_upward</span>
-                  </button>
-                </div>
+                        }`}
+                    >
+                      <span className="material-symbols-outlined">arrow_upward</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -586,7 +637,6 @@ const Chat: React.FC = () => {
             <div className={`${activeWidget !== 'none' ? 'flex-shrink-0' : 'flex-1 h-full'}`}>
               <LiveCallPanel
                 onClose={() => setIsCallActive(false)}
-                minimized={activeWidget !== 'none'}
                 minimized={activeWidget !== 'none'}
                 transcript={transcript}
               />
