@@ -7,10 +7,11 @@ dotenv.config({ path: '../.env' });
 
 const API_KEY = process.env.ELEVENLABS_API_KEY;
 const AGENT_ID = process.env.ELEVENLABS_AGENT_ID;
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER; // Your Twilio number connected to ElevenLabs
 
 interface ActiveCall {
   id: string;
-  ws: WebSocket | null;
+  conversationId: string | null;
   state: 'connecting' | 'active' | 'on_hold' | 'ended';
   transcript: string[];
   clinicName: string;
@@ -22,38 +23,20 @@ interface ActiveCall {
 let activeCall: ActiveCall | null = null;
 
 /**
- * Initiate an outbound call to a clinic via ElevenLabs
+ * Initiate an ACTUAL outbound phone call to a clinic via ElevenLabs + Twilio
  */
 export async function initiateClinicCall(phoneNumber: string, reason: string, clinicName: string): Promise<{ callId: string; status: string }> {
-  console.log(`[ElevenLabs-Call] Initiating call to ${clinicName} at ${phoneNumber}`);
+  console.log(`[ElevenLabs-Call] Initiating REAL call to ${clinicName} at ${phoneNumber}`);
   console.log(`[ElevenLabs-Call] Reason: ${reason}`);
   console.log(`[ElevenLabs-Call] Using AGENT_ID: ${AGENT_ID}`);
+  console.log(`[ElevenLabs-Call] Using Twilio Phone: ${TWILIO_PHONE_NUMBER}`);
   
   if (!API_KEY || !AGENT_ID) {
     throw new Error('Missing ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID');
   }
   
-  // First, get a signed URL for the conversation
-  const signedUrlResponse = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`, {
-    method: 'GET',
-    headers: {
-      'xi-api-key': API_KEY
-    }
-  });
-
-  if (!signedUrlResponse.ok) {
-    const errorText = await signedUrlResponse.text();
-    console.error('[ElevenLabs-Call] Failed to get signed URL:', errorText);
-    throw new Error(`ElevenLabs API error: ${signedUrlResponse.statusText}`);
-  }
-
-  const responseData = await signedUrlResponse.json();
-  console.log('[ElevenLabs-Call] API Response:', JSON.stringify(responseData));
-  
-  // The response contains signed_url directly
-  const signedUrl = responseData.signed_url;
-  if (!signedUrl) {
-    throw new Error('No signed_url in ElevenLabs response');
+  if (!TWILIO_PHONE_NUMBER) {
+    throw new Error('Missing TWILIO_PHONE_NUMBER - required for outbound calls');
   }
   
   const callId = `call_${Date.now()}`;
@@ -61,7 +44,7 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   // Create active call record
   activeCall = {
     id: callId,
-    ws: null,
+    conversationId: null,
     state: 'connecting',
     transcript: [],
     clinicName,
@@ -73,48 +56,58 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   emitCallStarted(callId);
   console.log('[ElevenLabs-Call] Call started event emitted');
   
-  // Connect to WebSocket for the conversation
-  console.log('[ElevenLabs-Call] Connecting to WebSocket...');
-  const ws = new WebSocket(signedUrl);
-  activeCall.ws = ws;
+  // Use the ElevenLabs Twilio outbound call API
+  // This initiates an actual phone call using Twilio integration
+  const outboundCallResponse = await fetch('https://api.elevenlabs.io/v1/convai/twilio/outbound-call', {
+    method: 'POST',
+    headers: {
+      'xi-api-key': API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      agent_id: AGENT_ID,
+      agent_phone_number_id: TWILIO_PHONE_NUMBER, // Or use phone_number_id if you have one configured
+      customer_phone_number: phoneNumber,
+      first_message: `Hello, this is the Health.me AI assistant calling on behalf of a patient. The patient has been experiencing ${reason} and would like to schedule an appointment. Do you have any available slots?`,
+      // Optional: pass dynamic variables for the agent
+      dynamic_variables: {
+        clinic_name: clinicName,
+        patient_symptoms: reason
+      }
+    })
+  });
 
-  ws.onopen = () => {
-    console.log('[ElevenLabs-Call] Connected to agent WebSocket');
-    if (activeCall) {
-      activeCall.state = 'active';
-    }
+  if (!outboundCallResponse.ok) {
+    const errorText = await outboundCallResponse.text();
+    console.error('[ElevenLabs-Call] Failed to initiate outbound call:', errorText);
     
-    // Send initial context to the agent about the call
-    const contextMessage = {
-      type: 'contextual_update',
-      text: `You are calling ${clinicName} on behalf of a patient. The patient is experiencing: ${reason}. Please introduce yourself as an AI assistant calling on behalf of a Health.me patient, and request to schedule an appointment. When the receptionist offers available times, use your request_schedule_selection tool to let the patient choose.`
-    };
-    ws.send(JSON.stringify(contextMessage));
-    console.log('[ElevenLabs-Call] Sent context message to agent');
-  };
-
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data.toString());
-      handleAgentMessage(data);
-    } catch (e) {
-      console.error('[ElevenLabs-Call] Error parsing message:', e);
-    }
-  };
-
-  ws.onerror = (error) => {
-    console.error('[ElevenLabs-Call] WebSocket error:', error);
-  };
-
-  ws.onclose = () => {
-    console.log('[ElevenLabs-Call] WebSocket closed');
+    // Update call state
     if (activeCall) {
       activeCall.state = 'ended';
-      emitCallEnded(activeCall.id, activeCall.transcript);
+      emitCallEnded(callId, [`Error: ${errorText}`]);
     }
-  };
+    
+    throw new Error(`ElevenLabs outbound call error: ${outboundCallResponse.statusText} - ${errorText}`);
+  }
 
-  return { callId, status: 'connecting' };
+  const callData = await outboundCallResponse.json();
+  console.log('[ElevenLabs-Call] Outbound call initiated:', JSON.stringify(callData));
+  
+  // Store the conversation ID for later reference
+  if (activeCall) {
+    activeCall.conversationId = callData.conversation_id || callData.call_sid || callId;
+    activeCall.state = 'active';
+  }
+  
+  // Note: To get real-time updates, you'd need to set up a webhook
+  // For now, the ElevenLabs agent handles the conversation autonomously
+  // When the agent uses the webhook tool, your /call/show-calendar endpoint will be hit
+  
+  return { 
+    callId, 
+    status: 'call_initiated',
+    ...callData
+  };
 }
 
 /**
@@ -127,7 +120,8 @@ function handleAgentMessage(data: any) {
 
   switch (data.type) {
     case 'ping':
-      activeCall.ws?.send(JSON.stringify({ type: 'pong', event_id: data.ping_event?.event_id }));
+      // No WebSocket to respond to in outbound call mode
+      // This would be handled via webhook
       break;
     
     case 'agent_response':
@@ -220,29 +214,46 @@ function handleClientToolCall(toolCall: any) {
 }
 
 /**
- * Send user's time selection back to the active call
+ * Send user's time selection back to the active call via conversation API
  */
-export function sendResponseToCall(response: string): boolean {
-  if (!activeCall || !activeCall.ws || activeCall.ws.readyState !== WebSocket.OPEN) {
+export async function sendResponseToCall(response: string): Promise<boolean> {
+  if (!activeCall || !activeCall.conversationId) {
     console.error('[ElevenLabs-Call] No active call to send response to');
     return false;
   }
   
   console.log('[ElevenLabs-Call] Sending user response to call:', response);
   
-  // Send the user's selection as a message to the agent
-  const message = {
-    type: 'user_message',
-    user_message: {
-      text: `The patient has selected: ${response}. Please confirm this appointment time with the receptionist.`
+  // For outbound calls via Twilio, we need to send the response via the conversation API
+  // This tells the ElevenLabs agent what the user selected
+  try {
+    const API_KEY = process.env.ELEVENLABS_API_KEY;
+    
+    // Use the ElevenLabs API to send a message to the ongoing conversation
+    // Note: This is a simplified approach - in production you might use webhooks
+    const res = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${activeCall.conversationId}/send-message`, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': API_KEY || '',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `The patient has selected: ${response}. Please confirm this appointment time with the receptionist.`
+      })
+    });
+    
+    if (!res.ok) {
+      console.error('[ElevenLabs-Call] Failed to send response:', await res.text());
+      return false;
     }
-  };
-  
-  activeCall.ws.send(JSON.stringify(message));
-  activeCall.state = 'active';
-  activeCall.pendingUserResponse = false;
-  
-  return true;
+    
+    activeCall.state = 'active';
+    activeCall.pendingUserResponse = false;
+    return true;
+  } catch (error) {
+    console.error('[ElevenLabs-Call] Error sending response:', error);
+    return false;
+  }
 }
 
 /**
