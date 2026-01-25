@@ -5,11 +5,11 @@ const HealthProfile: React.FC = () => {
   const [activeView, setActiveView] = useState<'profile' | 'records'>('profile');
 
   const records = [
-    { name: 'Blood Panel - Annual Checkup', date: 'Jan 12, 2024', clinic: 'City Health Center', type: 'Lab Result', icon: 'biotech', color: 'bg-blue-50 text-blue-500' },
-    { name: 'Radiology Report - Lower Back', date: 'Dec 05, 2023', clinic: 'St. Mary Diagnostics', type: 'Imaging', icon: 'visibility', color: 'bg-purple-50 text-purple-500' },
-    { name: 'Prescription: Lisinopril 10mg', date: 'Nov 20, 2023', clinic: 'City Health Center', type: 'Prescription', icon: 'medication', color: 'bg-orange-50 text-orange-500' },
-    { name: 'Discharge Summary - Appendectomy', date: 'Aug 14, 2023', clinic: 'SF General Hospital', type: 'Hospital Record', icon: 'description', color: 'bg-gray-50 text-gray-500' },
-    { name: 'Immunization Record - 2023', date: 'Feb 10, 2023', clinic: 'Family Health Plus', type: 'Vaccination', icon: 'vaccines', color: 'bg-green-50 text-green-500' },
+    { name: 'Blood Panel - Annual Checkup', date: 'Jan 12, 2024', clinic: 'Clinique Médicale Privée UnionMD', type: 'Lab Result', icon: 'biotech', color: 'bg-blue-50 text-blue-500' },
+    { name: 'Radiology Report - Lower Back', date: 'Dec 05, 2023', clinic: 'CuraMed', type: 'Imaging', icon: 'visibility', color: 'bg-purple-50 text-purple-500' },
+    { name: 'Prescription: Lisinopril 10mg', date: 'Nov 20, 2023', clinic: 'Clinique Santé MD', type: 'Prescription', icon: 'medication', color: 'bg-orange-50 text-orange-500' },
+    { name: 'Discharge Summary - Appendectomy', date: 'Aug 14, 2023', clinic: 'Centre Médical Westmount', type: 'Hospital Record', icon: 'description', color: 'bg-gray-50 text-gray-500' },
+    { name: 'Immunization Record - 2023', date: 'Feb 10, 2023', clinic: 'Westmount Square Health Group', type: 'Vaccination', icon: 'vaccines', color: 'bg-green-50 text-green-500' },
   ];
 
   return (
@@ -147,9 +147,9 @@ const HealthProfile: React.FC = () => {
               <h2 className="serif-font text-3xl text-primary mb-8 px-2">Clinical Timeline</h2>
               <div className="space-y-6">
                 {[
-                  { year: '2023', event: 'Appendectomy', clinic: 'SF General Hospital', icon: 'content_cut' },
-                  { year: '2021', event: 'Type 2 Diabetes Diagnosis', clinic: 'City Health Center', icon: 'medical_information' },
-                  { year: '2018', event: 'Left Wrist Fracture', clinic: 'St. Mary Urgent Care', icon: 'orthopedics' },
+                  { year: '2023', event: 'Appendectomy', clinic: 'Centre Médical Westmount', icon: 'content_cut' },
+                  { year: '2021', event: 'Type 2 Diabetes Diagnosis', clinic: 'Clinique Médicale Privée UnionMD', icon: 'medical_information' },
+                  { year: '2018', event: 'Left Wrist Fracture', clinic: 'Clinique Médicale Métro', icon: 'orthopedics' },
                 ].map((item, i) => (
                   <div key={i} className="bg-white p-8 rounded-[32px] border border-black/5 flex items-center gap-8 hover:shadow-2xl hover:scale-[1.01] transition-all cursor-pointer group shadow-sm">
                     <div className="text-primary font-black serif-font text-3xl w-20 flex-shrink-0">{item.year}</div>

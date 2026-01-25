@@ -26,6 +26,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     navigate('/chat');
   };
 
+  
+
   return (
     <div className="min-h-screen bg-white flex relative overflow-hidden">
       {/* Left: Image Section */}

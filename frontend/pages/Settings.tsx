@@ -114,7 +114,7 @@ const Settings: React.FC = () => {
             <select 
               value={language} 
               onChange={(e) => setLanguage(e.target.value)}
-              className="bg-gray-50 border border-black/5 rounded-xl px-3 py-2 text-sm text-primary font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="bg-gray-50 border border-black/5 rounded-xl px-6.5 py-2 text-sm text-primary font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="en">English</option>
               <option value="fr">Français</option>
