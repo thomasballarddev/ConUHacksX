@@ -1,4 +1,6 @@
 import React from 'react';
+import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface LocationWidgetProps {
   onClose?: () => void;
@@ -22,11 +24,32 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
       
       <div className="flex-1 overflow-hidden flex flex-col">
         {/* Map Placeholder */}
-        <div className="h-1/2 bg-gray-100 relative grayscale opacity-80 flex-shrink-0">
-           <img src="https://picsum.photos/seed/sfmap/800/400" className="w-full h-full object-cover" alt="Map" />
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-             <div className="size-6 bg-primary rounded-full border-4 border-white shadow-2xl pulse-red"></div>
-           </div>
+        <div className="h-1/2 bg-gray-100 relative flex-shrink-0">
+          <Map
+            initialViewState={{
+              longitude: -122.41669,
+              latitude: 37.7853,
+              zoom: 13
+            }}
+            style={{width: '100%', height: '100%'}}
+            mapStyle="mapbox://styles/mapbox/light-v11"
+            mapboxAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
+          >
+            <NavigationControl position="bottom-right" />
+            <Marker longitude={-122.41669} latitude={37.7853} anchor="bottom">
+              <div className="relative">
+                 <div className="size-6 bg-primary rounded-full border-4 border-white shadow-2xl pulse-red"></div>
+              </div>
+            </Marker>
+            
+            {/* Added markers for the list items for better context */}
+            <Marker longitude={-122.4000} latitude={37.7800} anchor="bottom">
+                <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
+            </Marker>
+             <Marker longitude={-122.4300} latitude={37.7900} anchor="bottom">
+                <span className="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
+            </Marker>
+          </Map>
         </div>
 
       {/* List */}

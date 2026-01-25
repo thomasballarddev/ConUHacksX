@@ -9,12 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-router-dom": "^7.13.0",
-    "react-dom": "^19.2.3",
+    "@google/genai": "^1.38.0",
+    "mapbox-gl": "^3.18.1",
     "react": "^19.2.3",
-    "@google/genai": "^1.38.0"
+    "react-dom": "^19.2.3",
+    "react-map-gl": "^8.1.0",
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
+    "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
