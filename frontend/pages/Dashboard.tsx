@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import cyclingImage from '../assets/cycling.jpg';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -53,92 +53,102 @@ const Dashboard: React.FC = () => {
     )}
     <div className="px-8 pb-32">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-12">
+        <div className="mb-8">
           <h1 className="serif-font text-5xl text-primary mb-4 leading-tight">Welcome, Sam! 👋</h1>
           <p className="text-xl text-gray-500 max-w-2xl leading-relaxed">
             Your personal AI health assistant is ready to help. How are you feeling today?
           </p>
         </div>
 
-        <div className="mb-12">
-          {/* Daily Health Summary - Extended */}
-          <div className="bg-card-beige p-8 rounded-3xl border border-black/5 shadow-sm">
-            <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">monitoring</span>
-              Daily Health Summary
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
-                    <span className="material-symbols-outlined">water_drop</span>
+        {/* Hero Section with Integrated Summary */}
+        <div className="relative w-full min-h-[500px] rounded-[40px] overflow-hidden mb-12 shadow-lg group flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-500 z-10"></div>
+          <img 
+            src={cyclingImage} 
+            alt="Active Lifestyle" 
+            className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+          />
+          
+          <div className="relative z-30 p-6 md:p-8 pb-4 md:pb-6">
+            {/* Daily Health Summary Overlay */}
+            <div className="bg-card-beige/90 backdrop-blur-md p-8 rounded-3xl border border-black/5 shadow-xl">
+              <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">monitoring</span>
+                Daily Health Summary
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-blue-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
+                      <span className="material-symbols-outlined">water_drop</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Hydration</span>
                   </div>
-                  <span className="text-sm font-semibold">Hydration</span>
+                  <span className="text-sm font-black text-slate-800">1.2L / 2.5L</span>
                 </div>
-                <span className="text-sm font-black">1.2L / 2.5L</span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-green-50 rounded-xl flex items-center justify-center text-green-500">
-                    <span className="material-symbols-outlined">directions_walk</span>
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-green-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-green-50 rounded-xl flex items-center justify-center text-green-500">
+                      <span className="material-symbols-outlined">directions_walk</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Activity</span>
                   </div>
-                  <span className="text-sm font-semibold">Activity</span>
+                  <span className="text-sm font-black text-slate-800">4,582 steps</span>
                 </div>
-                <span className="text-sm font-black">4,582 steps</span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-red-50 rounded-xl flex items-center justify-center text-red-500">
-                    <span className="material-symbols-outlined">favorite</span>
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-red-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-red-50 rounded-xl flex items-center justify-center text-red-500">
+                      <span className="material-symbols-outlined">favorite</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Heart Rate</span>
                   </div>
-                  <span className="text-sm font-semibold">Heart Rate</span>
+                  <span className="text-sm font-black text-slate-800">72 bpm</span>
                 </div>
-                <span className="text-sm font-black">72 bpm</span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-500">
-                    <span className="material-symbols-outlined">bedtime</span>
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-purple-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-500">
+                      <span className="material-symbols-outlined">bedtime</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Sleep</span>
                   </div>
-                  <span className="text-sm font-semibold">Sleep</span>
+                  <span className="text-sm font-black text-slate-800">7h 23m</span>
                 </div>
-                <span className="text-sm font-black">7h 23m</span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500">
-                    <span className="material-symbols-outlined">local_fire_department</span>
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-orange-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500">
+                      <span className="material-symbols-outlined">local_fire_department</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Calories</span>
                   </div>
-                  <span className="text-sm font-semibold">Calories</span>
+                  <span className="text-sm font-black text-slate-800">1,847 kcal</span>
                 </div>
-                <span className="text-sm font-black">1,847 kcal</span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-500">
-                    <span className="material-symbols-outlined">speed</span>
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-teal-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-500">
+                      <span className="material-symbols-outlined">speed</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Blood Pressure</span>
                   </div>
-                  <span className="text-sm font-semibold">Blood Pressure</span>
+                  <span className="text-sm font-black text-slate-800">120/80</span>
                 </div>
-                <span className="text-sm font-black">120/80</span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600">
-                    <span className="material-symbols-outlined">glucose</span>
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-yellow-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600">
+                      <span className="material-symbols-outlined">glucose</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Blood Sugar</span>
                   </div>
-                  <span className="text-sm font-semibold">Blood Sugar</span>
+                  <span className="text-sm font-black text-slate-800">95 mg/dL</span>
                 </div>
-                <span className="text-sm font-black">95 mg/dL</span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="size-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
-                    <span className="material-symbols-outlined">thermostat</span>
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-indigo-200 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className="size-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
+                      <span className="material-symbols-outlined">thermostat</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Temperature</span>
                   </div>
-                  <span className="text-sm font-semibold">Temperature</span>
+                  <span className="text-sm font-black text-slate-800">98.6°F</span>
                 </div>
-                <span className="text-sm font-black">98.6°F</span>
               </div>
             </div>
           </div>
