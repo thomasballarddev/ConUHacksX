@@ -402,11 +402,20 @@ const Chat: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsCallActive(!isCallActive)}
-                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${isCallActive ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl transition-all shadow-sm ${isCallActive ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
                   }`}
               >
-                <span className="material-symbols-outlined text-sm">phone_in_talk</span>
-                {isCallActive ? 'End Call' : 'Call'}
+                {isCallActive ? (
+                  <>
+                    <span className="material-symbols-outlined text-sm">call_end</span>
+                    <span className="text-[11px] font-black uppercase tracking-wider">End</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">phone_in_talk</span>
+                    <span className="text-[11px] font-black uppercase tracking-wider">Call</span>
+                  </>
+                )}
               </button>
               {/* TEST BUTTON - Remove in production */}
               {isCallActive && (
