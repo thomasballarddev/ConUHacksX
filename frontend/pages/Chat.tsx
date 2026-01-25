@@ -123,8 +123,8 @@ const Chat: React.FC = () => {
                     isCallActive ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
                  }`}
                >
-                 <span className="material-symbols-outlined text-sm">phone_in_talk</span>
-                 {isCallActive ? 'End Call' : 'Call'}
+                 <span className={`material-symbols-outlined text-sm ${isCallActive ? 'rotate-[135deg]' : ''}`}>call</span>
+                 {isCallActive ? 'End' : 'Call'}
                </button>
             </div>
           </div>
