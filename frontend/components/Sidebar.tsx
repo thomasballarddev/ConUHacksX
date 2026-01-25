@@ -14,7 +14,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
           <span className="serif-font text-2xl font-semibold text-primary">Health.me</span>
         </div>
         
-        <div className="flex items-center space-x-3 p-2 mb-8">
+        <NavLink 
+          to="/settings" 
+          className="flex items-center space-x-3 p-2 mb-8 rounded-xl hover:bg-black/5 transition-all cursor-pointer"
+        >
           <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-800 font-bold overflow-hidden border border-black/5 shadow-sm">
             <img 
               alt="Sam Smith" 
@@ -26,7 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
             <p className="text-sm font-semibold text-primary">Sam Smith</p>
             <p className="text-[11px] text-gray-500 uppercase tracking-wider font-bold">Pro Member</p>
           </div>
-        </div>
+        </NavLink>
 
         <nav className="space-y-1">
           <NavLink 
