@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { LocationProvider } from './contexts/LocationContext';
+import { AuthProvider } from './contexts/AuthContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -34,30 +34,31 @@ const App: React.FC = () => {
   };
 
   return (
-    <LocationProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
-          <Route path="/signup" element={<SignUp onSignUp={() => setIsAuthenticated(true)} />} />
-          <Route path="/onboarding" element={
-            isAuthenticated ? (
-              <Onboarding onComplete={() => setHasCompletedOnboarding(true)} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          } />
-          <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
-          <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
-          <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
-          <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
-          <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
-          <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </LocationProvider>
+    <AuthProvider>
+      <LocationProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
+            <Route path="/signup" element={<SignUp onSignUp={() => setIsAuthenticated(true)} />} />
+            <Route path="/onboarding" element={
+              isAuthenticated ? (
+                <Onboarding onComplete={() => setHasCompletedOnboarding(true)} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            } />
+            <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
+            <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
+            <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
+            <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
+            <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
+            <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </LocationProvider>
+    </AuthProvider>
   );
 };
 
 export default App;
-

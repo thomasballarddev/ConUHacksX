@@ -6,6 +6,8 @@ import LiveCallPanel from '../components/LiveCallPanel';
 import LocationWidget from '../components/LocationWidget';
 import QuestionWidget from '../components/QuestionWidget';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { saveMessage, getOrCreateActiveChat, subscribeToMessages } from '../src/firestore';
 
 interface Message {
   role: 'user' | 'model';
@@ -104,6 +106,7 @@ import AudioVisualizer from '../components/AudioVisualizer';
 // ... existing interfaces ...
 
 const Chat: React.FC = () => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
@@ -113,6 +116,7 @@ const Chat: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [firestoreChatId, setFirestoreChatId] = useState<string | null>(null);
 
   // Session state
   const [searchParams] = useSearchParams();
@@ -122,6 +126,31 @@ const Chat: React.FC = () => {
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule' | 'question'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
+
+  // Initialize Firestore chat session when user is authenticated
+  useEffect(() => {
+    if (!user) return;
+    
+    const initFirestoreChat = async () => {
+      try {
+        const chatId = await getOrCreateActiveChat(user.uid);
+        setFirestoreChatId(chatId);
+        
+        // Subscribe to messages from Firestore
+        const unsubscribe = subscribeToMessages(user.uid, chatId, (firestoreMessages) => {
+          if (firestoreMessages.length > 0) {
+            setMessages(firestoreMessages.map(m => ({ role: m.role, text: m.text })));
+          }
+        });
+        
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error initializing Firestore chat:', error);
+      }
+    };
+    
+    initFirestoreChat();
+  }, [user]);
 
   // Voice Hook
   const handleVoiceFinalResult = (text: string) => {
@@ -261,8 +290,14 @@ const Chat: React.FC = () => {
     // Use textOverride if provided, otherwise clear input state
     if (!textOverride) setInput('');
 
-    setMessages(prev => [...prev, { role: 'user', text: textToSend }]);
+    const userMessage = { role: 'user' as const, text: textToSend };
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+
+    // Save user message to Firestore
+    if (user && firestoreChatId) {
+      saveMessage(user.uid, firestoreChatId, userMessage);
+    }
 
     try {
       // Send to backend via REST (or WS, but REST handles the ElevenLabs agent initiation better initially)
@@ -290,7 +325,14 @@ const Chat: React.FC = () => {
 
       // Gemini returns { message: "...", conversation_id: "..." }
       if (data.message) {
-        setMessages(prev => [...prev, { role: 'model', text: data.message }]);
+        const modelMessage = { role: 'model' as const, text: data.message };
+        setMessages(prev => [...prev, modelMessage]);
+        
+        // Save model message to Firestore
+        if (user && firestoreChatId) {
+          saveMessage(user.uid, firestoreChatId, modelMessage);
+        }
+        
         speak(data.message, () => {
           // Auto-restart listening after AI finishes speaking
           setTimeout(() => startListening(), 500);
