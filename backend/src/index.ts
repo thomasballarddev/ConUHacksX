@@ -10,7 +10,7 @@ import chatRoutes from './routes/chat.js';
 import { initializeWebSocket } from './services/websocket.js';
 import { setupMcpRoutes } from './mcp.js';
 
-dotenv.config();
+dotenv.config({ path: '../.env' });
 
 const app = express();
 const httpServer = createServer(app);
