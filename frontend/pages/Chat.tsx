@@ -25,6 +25,9 @@ interface ServerToClientEvents {
   emergency_trigger: () => void;
   chat_response: (message: { role: 'user' | 'assistant', content: string }) => void;
   error: (message: string) => void;
+  // Agent input request events
+  agent_needs_input: (data: { callId: string; question: string; context?: string }) => void;
+  agent_input_received: (data: { callId: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -152,6 +155,18 @@ const Chat: React.FC = () => {
   const [showEmergency, setShowEmergency] = useState(false);
   const [transcript, setTranscript] = useState<string[]>([]);
 
+  // Agent input request state (when agent needs info from user during call)
+  const [agentNeedsInput, setAgentNeedsInput] = useState(false);
+  const [agentQuestion, setAgentQuestion] = useState('');
+  const [agentContext, setAgentContext] = useState('');
+
+  // TEST FUNCTION - Remove in production
+  const testAgentInput = () => {
+    setAgentNeedsInput(true);
+    setAgentQuestion("What is your date of birth?");
+    setAgentContext("The receptionist needs to verify your identity.");
+  };
+
   useEffect(() => {
     // 1. Connect to Backend WebSocket
     const socket = io(import.meta.env.VITE_BACKEND_URL); // Uses env var
@@ -189,6 +204,20 @@ const Chat: React.FC = () => {
     socket.on('chat_response', (msg) => {
       setIsLoading(false);
       setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
+    });
+
+    // Agent needs user input during call
+    socket.on('agent_needs_input', (data) => {
+      setAgentNeedsInput(true);
+      setAgentQuestion(data.question);
+      setAgentContext(data.context || 'The receptionist is asking for this information.');
+    });
+
+    // Agent received user input, clear the prompt
+    socket.on('agent_input_received', () => {
+      setAgentNeedsInput(false);
+      setAgentQuestion('');
+      setAgentContext('');
     });
 
     return () => {
@@ -302,6 +331,28 @@ const Chat: React.FC = () => {
     }
   };
 
+  // Handle user response to agent input request
+  const handleAgentInputResponse = async (response: string) => {
+    // For testing: clear immediately (in production, socket event handles this)
+    setAgentNeedsInput(false);
+    setAgentQuestion('');
+    setAgentContext('');
+
+    // Add the response to the transcript for visibility
+    setTranscript(prev => [...prev, `User: ${response}`]);
+
+    try {
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/user-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response })
+      });
+      // The socket will emit 'agent_input_received' to clear the prompt
+    } catch (error) {
+      console.error('Failed to send user response:', error);
+    }
+  };
+
   // Derived state for Right Panel visibility
   const showRightPanel = activeWidget !== 'none' || isCallActive;
 
@@ -347,6 +398,17 @@ const Chat: React.FC = () => {
                 <span className="material-symbols-outlined text-sm">phone_in_talk</span>
                 {isCallActive ? 'End Call' : 'Call'}
               </button>
+              {/* TEST BUTTON - Remove in production */}
+              {isCallActive && (
+                <button
+                  onClick={testAgentInput}
+                  className="flex items-center gap-2 border border-black/5 bg-white text-primary px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm hover:bg-primary hover:text-white"
+                  title="Test: Simulate agent asking for input"
+                >
+                  <span className="material-symbols-outlined text-sm">science</span>
+                  Test
+                </button>
+              )}
             </div>
           </div>
 
@@ -357,7 +419,7 @@ const Chat: React.FC = () => {
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`flex gap-4 max-w-[90%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`size-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold shadow-sm ${msg.role === 'user' ? 'bg-black text-white' : 'bg-primary text-white'
@@ -375,15 +437,15 @@ const Chat: React.FC = () => {
               </div>
             ))}
             {isLoading && (
-              <div className="flex justify-start animate-pulse">
+              <div className="flex justify-start">
                 <div className="flex gap-4">
                   <div className="size-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
                     <span className="material-symbols-outlined text-white text-base">smart_toy</span>
                   </div>
                   <div className="bg-white text-primary rounded-3xl rounded-tl-none p-5 shadow-sm border border-black/5 flex space-x-2 items-center">
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-75"></div>
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-150"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
                   </div>
                 </div>
               </div>
@@ -490,6 +552,10 @@ const Chat: React.FC = () => {
                 onClose={() => setIsCallActive(false)}
                 minimized={activeWidget !== 'none'}
                 transcript={transcript}
+                agentNeedsInput={agentNeedsInput}
+                agentQuestion={agentQuestion}
+                agentContext={agentContext}
+                onUserResponse={handleAgentInputResponse}
               />
             </div>
           )}
