@@ -160,14 +160,32 @@ export const saveUserProfile = async (
 ): Promise<void> => {
   try {
     const profileRef = doc(db, 'users', userId, 'profile', 'data');
-    await setDoc(profileRef, {
+
+    const dataToSave = {
       ...profileData,
       onboardingCompleted: true,
       updatedAt: new Date().toISOString()
-    }, { merge: true });
-    console.log('[Firestore] User profile saved successfully');
+    };
+
+    console.log('[Firestore] About to write to:', profileRef.path);
+    console.log('[Firestore] Data to save:', JSON.stringify(dataToSave, null, 2));
+
+    await setDoc(profileRef, dataToSave, { merge: true });
+
+    console.log('[Firestore] setDoc completed. Verifying write...');
+
+    // Verify the write was successful by reading it back
+    const verifySnap = await getDoc(profileRef);
+    if (verifySnap.exists()) {
+      console.log('[Firestore] ✅ Verification successful! Data exists in Firestore');
+      console.log('[Firestore] Saved data:', verifySnap.data());
+    } else {
+      console.error('[Firestore] ❌ Verification FAILED! Document does not exist after write');
+      throw new Error('Profile write failed - document not found after save');
+    }
   } catch (error) {
-    console.error('Error saving user profile:', error);
+    console.error('[Firestore] Error saving user profile:', error);
+    console.error('[Firestore] Error details:', JSON.stringify(error, null, 2));
     throw error;
   }
 };
