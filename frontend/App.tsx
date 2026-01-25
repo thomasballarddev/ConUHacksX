@@ -12,9 +12,11 @@ import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import SignUp from './pages/SignUp';
 import Calendar from './pages/Calendar';
+import Onboarding from './pages/Onboarding';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
   const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -37,6 +39,13 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
           <Route path="/signup" element={<SignUp onSignUp={() => setIsAuthenticated(true)} />} />
+          <Route path="/onboarding" element={
+            isAuthenticated ? (
+              <Onboarding onComplete={() => setHasCompletedOnboarding(true)} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } />
           <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
           <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
           <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
@@ -51,3 +60,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

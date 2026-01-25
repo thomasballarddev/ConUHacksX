@@ -21,7 +21,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp }) => {
     
     setIsSubmitting(false);
     onSignUp();
-    navigate('/chat');
+    navigate('/onboarding');
   };
 
   return (

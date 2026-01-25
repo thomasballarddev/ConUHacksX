@@ -1,4 +1,5 @@
 {
   "currentChatId": null,
-  "chats": {}
+  "chats": {},
+  "userProfile": null
 }
