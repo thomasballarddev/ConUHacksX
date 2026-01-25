@@ -323,7 +323,37 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
           >
             <NavigationControl position="bottom-right" />
 
-            {/* Removed Source mapbox-dem and Layer 3d-buildings to simplify and prevent unmount crashes for now */}
+            {/* 3D Buildings Layer */}
+            <Layer
+              id="3d-buildings"
+              source="composite"
+              source-layer="building"
+              filter={['==', 'extrude', 'true']}
+              type="fill-extrusion"
+              minzoom={15}
+              paint={{
+                'fill-extrusion-color': '#aaa',
+                'fill-extrusion-height': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'height']
+                ],
+                'fill-extrusion-base': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'min_height']
+                ],
+                'fill-extrusion-opacity': 0.6
+              }}
+            />
 
             {/* Route line */}
             {routeGeoJson && (
