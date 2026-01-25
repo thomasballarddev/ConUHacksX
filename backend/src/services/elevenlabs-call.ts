@@ -1,4 +1,3 @@
-import WebSocket from 'ws';
 import dotenv from 'dotenv';
 import { emitShowCalendar, emitCallStarted, emitCallEnded, emitTranscriptUpdate, emitCallOnHold } from './websocket.js';
 import { TimeSlot } from '../types/index.js';
@@ -277,7 +276,7 @@ export function getActiveCallStatus(): ActiveCall | null {
 }
 
 /**
- * End the active call via ElevenLabs monitoring WebSocket
+ * End the active call via ElevenLabs DELETE conversation API
  */
 export async function endActiveCall(): Promise<boolean> {
   if (!activeCall || !activeCall.conversationId) {
@@ -289,55 +288,42 @@ export async function endActiveCall(): Promise<boolean> {
   console.log(`[ElevenLabs-Call] Conversation ID: ${activeCall.conversationId}`);
 
   try {
-    // Connect to the monitoring WebSocket
-    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversations/${activeCall.conversationId}/monitor`;
-    const ws = new WebSocket(wsUrl, {
+    // Use the DELETE conversation endpoint to properly terminate the call
+    const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${activeCall.conversationId}`, {
+      method: 'DELETE',
       headers: {
         'xi-api-key': API_KEY || ''
       }
     });
 
-    return new Promise((resolve, reject) => {
-      // Set timeout in case WebSocket connection fails
-      const timeout = setTimeout(() => {
-        ws.close();
-        console.error('[ElevenLabs-Call] Timeout trying to end call');
-        resolve(false);
-      }, 5000);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[ElevenLabs-Call] Failed to end call:', response.status, errorText);
 
-      ws.on('open', () => {
-        console.log('[ElevenLabs-Call] Monitoring WebSocket connected, sending end_call command');
+      // If it's a 404, the conversation might already be ended
+      if (response.status === 404) {
+        console.log('[ElevenLabs-Call] Conversation already ended (404)');
+      } else {
+        return false;
+      }
+    } else {
+      console.log('[ElevenLabs-Call] ✅ Call terminated via DELETE API');
+    }
 
-        // Send the end_call command
-        ws.send(JSON.stringify({
-          command_type: 'end_call'
-        }));
+    // Update call state and emit events
+    if (activeCall) {
+      const callId = activeCall.id;
+      const transcript = activeCall.transcript;
 
-        // Give it a moment to process, then close
-        setTimeout(() => {
-          clearTimeout(timeout);
-          ws.close();
+      activeCall.state = 'ended';
+      emitCallEnded(callId, transcript);
 
-          // Update call state
-          if (activeCall) {
-            activeCall.state = 'ended';
-            emitCallEnded(activeCall.id, activeCall.transcript);
-            console.log('[ElevenLabs-Call] ✅ Call ended successfully');
-          }
+      // Clear active call
+      activeCall = null;
+      console.log('[ElevenLabs-Call] ✅ Call ended successfully');
+    }
 
-          // Clear active call
-          activeCall = null;
-          resolve(true);
-        }, 1000);
-      });
-
-      ws.on('error', (error) => {
-        clearTimeout(timeout);
-        console.error('[ElevenLabs-Call] WebSocket error:', error);
-        ws.close();
-        resolve(false);
-      });
-    });
+    return true;
   } catch (error) {
     console.error('[ElevenLabs-Call] Error ending call:', error);
     return false;
