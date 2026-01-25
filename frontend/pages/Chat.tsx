@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import AppointmentScheduler from '../components/AppointmentScheduler';
 import LiveCallPanel from '../components/LiveCallPanel';
 import LocationWidget from '../components/LocationWidget';
@@ -453,7 +454,13 @@ const Chat: React.FC = () => {
                       ? 'bg-primary text-white rounded-tr-none'
                       : 'bg-white text-primary rounded-tl-none'
                     }`}>
-                    <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    {msg.role === 'user' ? (
+                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    ) : (
+                      <div className="text-[15px] leading-relaxed prose prose-sm max-w-none prose-headings:text-primary prose-strong:text-primary prose-ul:my-2 prose-li:my-0.5">
+                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

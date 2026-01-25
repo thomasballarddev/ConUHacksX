@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { initiateClinicCall, getActiveCallStatus, sendResponseToCall } from './elevenlabs-call.js';
 import { emitShowClinics } from './websocket.js';
 import { clinics } from '../data/clinics.js';
-import { addMessage, getConversationText, getCurrentChat, debugState } from './chatStorage.js';
+import { addMessage, getConversationText, getCurrentChat, debugState, getAllMessages } from './chatStorage.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -23,6 +23,7 @@ const SYSTEM_PROMPT = `You are a helpful AI health assistant for Health.me. You 
 - Finding nearby clinics and scheduling appointments
 - Answering general health questions
 - Providing health tips and wellness advice
+- Summarizing their health profile based on conversation history
 
 Be empathetic, professional, and concise. If a user describes a medical emergency,
 advise them to call emergency services immediately.
@@ -30,6 +31,8 @@ advise them to call emergency services immediately.
 When a user describes symptoms and needs a doctor appointment:
 1. First show them nearby clinics using the show_nearby_clinics function
 2. When they want to book, use initiate_clinic_call to have our AI agent call the clinic on their behalf
+
+When a user asks about their health profile, health summary, medical history, or similar questions like "what is my health profile", "summarize my health", "what symptoms have I reported", etc., use the get_health_profile function to retrieve and summarize their health information from conversation history.
 
 IMPORTANT: Users may have typos or autocorrect errors. Always interpret their messages in the context of the conversation. For example, if you asked about "nausea" and they respond with "Nassau", they likely mean "nausea" - not the location. Use common sense to infer meaning from context.
 
@@ -78,6 +81,15 @@ const functionDeclarations: FunctionDeclaration[] = [
       properties: {},
       required: []
     }
+  },
+  {
+    name: "get_health_profile",
+    description: "Retrieve and summarize the user's health profile based on their conversation history. Use this when the user asks about their health profile, health summary, symptoms they've reported, or any variation like 'what is my health profile', 'summarize my health', 'what have I told you about my health', etc.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {},
+      required: []
+    }
   }
 ];
 
@@ -115,7 +127,12 @@ async function executeFunctionCall(name: string, args: Record<string, unknown>):
       }
       return "No active call at the moment.";
     }
-    
+
+    case "get_health_profile": {
+      const healthProfile = await generateHealthProfile();
+      return healthProfile;
+    }
+
     default:
       return `Unknown function: ${name}`;
   }
@@ -196,9 +213,53 @@ export async function sendChatMessage(message: string, conversationId?: string):
 }
 
 /**
- * Extract patient symptoms from the full conversation history stored in db.json.
- * Passes the entire conversation to Gemini and asks it to summarize the symptoms.
+ * Generate a health profile summary from all conversation history.
+ * Reads the full chat history and uses Gemini to create a comprehensive health profile.
  */
+async function generateHealthProfile(): Promise<string> {
+  const messages = getAllMessages();
+
+  if (!messages || messages.length === 0) {
+    return "No conversation history found. I don't have any health information about you yet. Please share your symptoms or health concerns, and I'll be able to build your health profile over time.";
+  }
+
+  const conversationText = messages
+    .map(msg => `${msg.role === 'user' ? 'Patient' : 'Assistant'}: ${msg.content}`)
+    .join('\n');
+
+  console.log('[Gemini] Generating health profile from conversation history...');
+  console.log(`[Gemini] Total messages: ${messages.length}`);
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+    const prompt = `You are a health assistant analyzing a patient's conversation history to create a comprehensive health profile summary.
+
+Based on the conversation below, create a concise health profile that includes:
+1. **Reported Symptoms**: List all symptoms the patient has mentioned (e.g., stomach ache, headache, nausea, dizziness)
+2. **Symptom Details**: Any descriptions of the symptoms (sharp, dull, constant, intermittent, etc.)
+3. **Health Concerns**: Any general health topics or concerns discussed
+4. **Actions Taken**: Any clinics shown, appointments considered, or medical advice given
+
+Format the response in a clear, easy-to-read manner. If certain information wasn't discussed, indicate that.
+Be concise but thorough. This summary will be shown directly to the patient.
+
+Conversation History:
+${conversationText}
+
+Health Profile Summary:`;
+
+    const result = await model.generateContent(prompt);
+    const profile = result.response.text().trim();
+
+    console.log('[Gemini] Health profile generated successfully');
+    return profile || "Unable to generate health profile from the conversation.";
+  } catch (error) {
+    console.error('[Gemini] Error generating health profile:', error);
+    return "I encountered an error while generating your health profile. Please try again.";
+  }
+}
+
 export async function getPatientSymptoms(): Promise<string> {
   // Get conversation from db.json
   const conversationText = getConversationText();

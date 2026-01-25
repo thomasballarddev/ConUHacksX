@@ -96,6 +96,35 @@
         @keyframes wave5 { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1.1); } }
         @keyframes wave6 { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(0.7); } }
         @keyframes wave7 { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(0.95); } }
+
+        /* Markdown styles for chat messages */
+        .prose h1, .prose h2, .prose h3, .prose h4 {
+            @apply font-bold mt-3 mb-2 first:mt-0;
+        }
+        .prose h1 { @apply text-lg; }
+        .prose h2 { @apply text-base; }
+        .prose h3, .prose h4 { @apply text-sm; }
+        .prose ul, .prose ol {
+            @apply pl-5 my-2;
+        }
+        .prose li {
+            @apply my-1;
+        }
+        .prose p {
+            @apply my-2 first:mt-0 last:mb-0;
+        }
+        .prose strong {
+            @apply font-semibold;
+        }
+        .prose code {
+            @apply bg-black/5 px-1 py-0.5 rounded text-sm;
+        }
+        .prose pre {
+            @apply bg-black/5 p-3 rounded-lg my-2 overflow-x-auto;
+        }
+        .prose pre code {
+            @apply bg-transparent p-0;
+        }
     </style>
 <script type="importmap">
 {
