@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import AppointmentScheduler from '../components/AppointmentScheduler';
 import LiveCallPanel from '../components/LiveCallPanel';
 import LocationWidget from '../components/LocationWidget';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface Message {
   role: 'user' | 'model';
@@ -32,6 +32,67 @@ interface ClientToServerEvents {
 }
 
 
+// Fake session data with preloaded message history
+const sessionData = [
+  {
+    id: 1,
+    title: 'General checkup followup',
+    date: 'Today',
+    status: 'active' as const,
+    messages: [
+      { role: 'model' as const, text: 'Hello! I see you had a general checkup last week. How are you feeling since then?' },
+      { role: 'user' as const, text: "I've been feeling much better, but I still have some mild fatigue in the afternoons." },
+      { role: 'model' as const, text: "That's good to hear you're improving! Mild afternoon fatigue can be normal during recovery. Make sure you're staying hydrated and getting adequate sleep. If the fatigue persists beyond another week, we should schedule a follow-up." },
+    ]
+  },
+  {
+    id: 2,
+    title: 'Lower back pain query',
+    date: 'Yesterday',
+    status: 'completed' as const,
+    messages: [
+      { role: 'model' as const, text: 'Hello! How can I help you today?' },
+      { role: 'user' as const, text: "I've been experiencing lower back pain for the past few days, especially when sitting for long periods." },
+      { role: 'model' as const, text: "Lower back pain from prolonged sitting is quite common. I recommend taking breaks every 30 minutes to stretch, ensuring your chair provides proper lumbar support, and doing gentle stretches. Would you like me to find a nearby clinic if the pain persists?" },
+    ]
+  },
+  {
+    id: 3,
+    title: 'Prescription refill request',
+    date: 'Jan 21',
+    status: 'completed' as const,
+    messages: [
+      { role: 'model' as const, text: 'Hello! How can I assist you today?' },
+      { role: 'user' as const, text: "I need to refill my blood pressure medication. I'm running low." },
+      { role: 'model' as const, text: "I can help you with that. I see you're on Lisinopril 10mg. I've sent a refill request to your pharmacy. It should be ready for pickup within 24 hours. Remember to take it at the same time each day." },
+    ]
+  },
+  {
+    id: 4,
+    title: 'Headache symptoms',
+    date: 'Jan 19',
+    status: 'completed' as const,
+    messages: [
+      { role: 'model' as const, text: 'Hello! What brings you in today?' },
+      { role: 'user' as const, text: "I've been having recurring headaches for the past week. They usually start in the afternoon." },
+      { role: 'model' as const, text: "Recurring afternoon headaches could be related to eye strain, dehydration, or tension. Are you spending a lot of time on screens? Try the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds. Also ensure you're drinking enough water." },
+    ]
+  },
+  {
+    id: 5,
+    title: 'Annual physical booking',
+    date: 'Jan 15',
+    status: 'completed' as const,
+    messages: [
+      { role: 'model' as const, text: 'Hello! How can I help you today?' },
+      { role: 'user' as const, text: "I'd like to schedule my annual physical exam." },
+      { role: 'model' as const, text: "I'd be happy to help you book your annual physical. I found several clinics near you with availability this week. Would you like me to show you the options?" },
+      { role: 'user' as const, text: 'Yes please!' },
+      { role: 'model' as const, text: "I've found City Health Center with openings on Thursday and Friday morning. Shall I book one of those slots for you?" },
+    ]
+  },
+];
+
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -42,12 +103,39 @@ const Chat: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Session state
+  const [searchParams] = useSearchParams();
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Load session from URL params
+  useEffect(() => {
+    const sessionParam = searchParams.get('session');
+    if (sessionParam) {
+      const sessionId = parseInt(sessionParam);
+      const session = sessionData.find(s => s.id === sessionId);
+      if (session) {
+        setActiveSessionId(sessionId);
+        setMessages(session.messages);
+        setIsCompleted(session.status === 'completed');
+      }
+    } else {
+      // Reset to default when no session param
+      setActiveSessionId(null);
+      setIsCompleted(false);
+      setMessages([{
+        role: 'model',
+        text: 'Hello! I am your Health.me AI assistant. I have access to your health records and current vitals. How can I help you today?'
+      }]);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -161,6 +249,9 @@ const Chat: React.FC = () => {
 
   const handleNewChat = () => {
     setMessages([{ role: 'model', text: 'New conversation started. How can I assist you with your health today?' }]);
+    setIsCompleted(false);
+    setActiveSessionId(null);
+    navigate('/chat');
   };
 
   const handleClinicSelect = async (clinic: { name: string; phone?: string }) => {
@@ -300,51 +391,66 @@ const Chat: React.FC = () => {
           </div>
 
           <div className="py-8 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleNewChat}
-                className="group flex flex-col items-center justify-center size-14 rounded-3xl bg-white border border-black/5 text-gray-400 hover:text-primary hover:border-primary transition-all shadow-sm"
-                title="New Conversation"
-              >
-                <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">add_comment</span>
-                <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">New</span>
-              </button>
-
-              <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
-                <button className="p-3 text-gray-400 hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined">attachment</span>
-                </button>
-                <input
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder:text-gray-400 py-3"
-                  placeholder="Ask about symptoms or bookings..."
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                />
+            {isCompleted ? (
+              <div className="bg-gray-100 border border-black/5 rounded-[32px] p-4 flex items-center justify-center gap-3">
+                <span className="material-symbols-outlined text-gray-400">lock</span>
+                <p className="text-gray-500 text-sm font-medium">This conversation is completed and read-only</p>
                 <button
-                  onClick={handleSend}
-                  disabled={isLoading || !input.trim()}
-                  className={`size-11 rounded-2xl transition-all flex items-center justify-center ${isLoading || !input.trim()
-                      ? 'bg-gray-100 text-gray-400'
-                      : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
-                    }`}
+                  onClick={handleNewChat}
+                  className="ml-4 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-black transition-all"
                 >
-                  <span className="material-symbols-outlined">arrow_upward</span>
+                  Start New Chat
                 </button>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleNewChat}
+                  className="group flex flex-col items-center justify-center size-14 rounded-3xl bg-white border border-black/5 text-gray-400 hover:text-primary hover:border-primary transition-all shadow-sm"
+                  title="New Conversation"
+                >
+                  <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">add_comment</span>
+                  <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">New</span>
+                </button>
 
-            <div className="mt-4 flex justify-center gap-6 opacity-40">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[12px] fill-1">verified</span>
-                HIPAA Compliant
-              </span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[12px] fill-1">lock</span>
-                Private Session
-              </span>
-            </div>
+                <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+                  <button className="p-3 text-gray-400 hover:text-primary transition-colors">
+                    <span className="material-symbols-outlined">attachment</span>
+                  </button>
+                  <input
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder:text-gray-400 py-3"
+                    placeholder="Ask about symptoms or bookings..."
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={isLoading || !input.trim()}
+                    className={`size-11 rounded-2xl transition-all flex items-center justify-center ${isLoading || !input.trim()
+                        ? 'bg-gray-100 text-gray-400'
+                        : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
+                      }`}
+                  >
+                    <span className="material-symbols-outlined">arrow_upward</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!isCompleted && (
+              <div className="mt-4 flex justify-center gap-6 opacity-40">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[12px] fill-1">verified</span>
+                  HIPAA Compliant
+                </span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[12px] fill-1">lock</span>
+                  Private Session
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
