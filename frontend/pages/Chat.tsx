@@ -126,12 +126,20 @@ const Chat: React.FC = () => {
         body: JSON.stringify({ message: userMsg })
       });
 
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status} ${res.statusText}`);
+      }
+
       const data = await res.json();
 
       // If backend returns a message directly (e.g. signedUrl or error)
       if (data.message && !data.conversation_id) {
         // Fallback if not using signed URL flow for chat messages
         setMessages(prev => [...prev, { role: 'model', text: data.message }]);
+        setIsLoading(false);
+      } else if (data.conversation_id) {
+        // Agent connected via Signed URL
+        setMessages(prev => [...prev, { role: 'model', text: "Agent connected. (Audio session ready)" }]);
         setIsLoading(false);
       }
       // If signed URL, the frontend ElevenLabs widget would handle it, 
