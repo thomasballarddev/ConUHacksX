@@ -66,7 +66,11 @@ const Chat: React.FC = () => {
 
   useEffect(() => {
     // 1. Connect to Backend WebSocket
-    const socket = io(import.meta.env.VITE_BACKEND_URL); // Uses env var
+    const socket = io(import.meta.env.VITE_BACKEND_URL, {
+      extraHeaders: {
+        'ngrok-skip-browser-warning': 'true'
+      }
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -121,7 +125,8 @@ const Chat: React.FC = () => {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ message: userMsg })
       });
@@ -157,7 +162,10 @@ const Chat: React.FC = () => {
     await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
       method: 'POST',
       body: JSON.stringify({ type: 'emergency' }),
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true'
+      }
     });
   };
 
