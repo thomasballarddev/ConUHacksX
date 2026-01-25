@@ -9,6 +9,7 @@ import Emergency from './pages/Emergency';
 import Login from './pages/Login';
 import HealthProfile from './pages/HealthProfile';
 import Chat from './pages/Chat';
+import Settings from './pages/Settings';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -37,6 +38,7 @@ const App: React.FC = () => {
           <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
           <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
           <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
+          <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
