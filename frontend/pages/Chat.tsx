@@ -105,6 +105,7 @@ const Chat: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   // Session state
   const [searchParams] = useSearchParams();
@@ -240,7 +241,10 @@ const Chat: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: userMsg })
+        body: JSON.stringify({
+          message: userMsg,
+          conversation_id: conversationId  // Include conversation_id for context
+        })
       });
 
       if (!res.ok) {
@@ -248,6 +252,11 @@ const Chat: React.FC = () => {
       }
 
       const data = await res.json();
+
+      // Store conversation_id for subsequent messages
+      if (data.conversation_id) {
+        setConversationId(data.conversation_id);
+      }
 
       // Gemini returns { message: "...", conversation_id: "..." }
       if (data.message) {
@@ -280,6 +289,7 @@ const Chat: React.FC = () => {
     setMessages([{ role: 'model', text: 'New conversation started. How can I assist you with your health today?' }]);
     setIsCompleted(false);
     setActiveSessionId(null);
+    setConversationId(null);  // Reset conversation for fresh start
     navigate('/chat');
   };
 

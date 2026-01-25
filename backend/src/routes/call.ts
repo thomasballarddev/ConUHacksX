@@ -17,14 +17,14 @@ let pendingWebhook: PendingWebhook | null = null;
 router.post('/initiate', async (req, res) => {
   try {
     const { phone, clinic_name } = req.body;
-    
+
     if (!phone) {
       return res.status(400).json({ error: 'Phone is required' });
     }
-    
-    // Get actual symptoms from Gemini conversation
-    const symptoms = getPatientSymptoms();
-    console.log(`[Call] Initiating call with symptoms: ${symptoms}`);
+
+    // Get symptoms by analyzing the full conversation with Gemini
+    const symptoms = await getPatientSymptoms();
+    console.log(`[Call] Initiating call with extracted symptoms: ${symptoms}`);
     
     const result = await initiateClinicCall(phone, symptoms, clinic_name || 'Medical Clinic');
     res.json(result);
