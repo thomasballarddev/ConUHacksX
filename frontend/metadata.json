@@ -1,0 +1,7 @@
+{
+  "name": "Health.me - AI Health Assistant",
+  "description": "A premium health management platform featuring AI-assisted emergency response, clinical booking automation, and real-time health monitoring.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
