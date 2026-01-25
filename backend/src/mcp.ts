@@ -101,20 +101,34 @@ mcpServer.tool(
 
 // Express Middleware for SSE
 export async function setupMcpRoutes(app: express.Express) {
-  let transport: SSEServerTransport;
+  const transports = new Map<string, SSEServerTransport>();
 
   app.get("/sse", async (req, res) => {
     console.log("[MCP] New SSE connection established");
-    transport = new SSEServerTransport("/messages", res);
+    const transport = new SSEServerTransport("/messages", res);
+    const sessionId = transport.sessionId;
+    transports.set(sessionId, transport);
+    console.log(`[MCP] Session created: ${sessionId}`);
+
+    res.on("close", () => {
+      console.log(`[MCP] Session closed: ${sessionId}`);
+      transports.delete(sessionId);
+    });
+
     await mcpServer.connect(transport);
   });
 
   app.post("/messages", async (req, res) => {
-    // console.log("[MCP] Received message");
+    const sessionId = req.query.sessionId as string;
+    console.log(`[MCP] Message received for session: ${sessionId}`);
+
+    const transport = transports.get(sessionId);
     if (transport) {
-      await transport.handlePostMessage(req, res);
+      // Pass req.body as parsedBody since express.json() already consumed the stream
+      await transport.handlePostMessage(req, res, req.body);
     } else {
-        res.status(500).send("No active transport");
+      console.log(`[MCP] No transport found for session: ${sessionId}`);
+      res.status(400).send("Invalid or missing sessionId");
     }
   });
 }
