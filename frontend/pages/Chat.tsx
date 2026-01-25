@@ -11,24 +11,11 @@ interface Message {
 }
 
 import EmergencyModal from '../components/EmergencyModal';
-import { io, Socket } from 'socket.io-client';
 
-// WebSocket event interface (matching backend)
-interface ServerToClientEvents {
-  show_clinics: (clinics: any[]) => void;
-  show_calendar: (slots: any[]) => void;
-  call_started: (callId: string) => void;
-  call_on_hold: (callId: string) => void;
-  call_resumed: (callId: string) => void;
-  call_ended: (callId: string, transcript: string[]) => void;
-  call_transcript_update: (callId: string, line: string) => void;
-  emergency_trigger: () => void;
-  chat_response: (message: { role: 'user' | 'assistant', content: string }) => void;
-  error: (message: string) => void;
-}
-
-interface ClientToServerEvents {
-  chat_message: (message: string) => void;
+// Event interface for polling
+interface BackendEvent {
+  type: 'show_clinics' | 'show_calendar' | 'call_started' | 'call_on_hold' | 'call_resumed' | 'call_ended' | 'call_transcript_update' | 'emergency_trigger' | 'chat_response' | 'error';
+  data: any;
 }
 
 
@@ -55,8 +42,9 @@ const Chat: React.FC = () => {
     }
   }, [messages, isLoading]);
 
-  // Socket Ref
-  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+  // Session ID for polling
+  const sessionIdRef = useRef<string>(Math.random().toString(36).substr(2, 9));
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Widget Data
   const [clinics, setClinics] = useState<any[]>([]);
@@ -64,74 +52,76 @@ const Chat: React.FC = () => {
   const [showEmergency, setShowEmergency] = useState(false);
   const [transcript, setTranscript] = useState<string[]>([]);
 
-  useEffect(() => {
-    // 1. Connect to Backend WebSocket
-    const socket = io(import.meta.env.VITE_BACKEND_URL, {
-      transports: ['websocket', 'polling'], // Prefer websocket but fallback to polling
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      extraHeaders: {
-        'ngrok-skip-browser-warning': 'true'
+  // Polling function
+  const pollForEvents = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/events?sessionId=${sessionIdRef.current}`,
+        {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        }
+      );
+
+      if (!res.ok) return;
+
+      const events: BackendEvent[] = await res.json();
+
+      for (const event of events) {
+        switch (event.type) {
+          case 'show_clinics':
+            console.log('Received show_clinics:', event.data);
+            setClinics(event.data);
+            setActiveWidget('location');
+            break;
+
+          case 'show_calendar':
+            console.log('Received show_calendar:', event.data);
+            setAvailableSlots(event.data);
+            setActiveWidget('schedule');
+            break;
+
+          case 'call_started':
+            console.log('Received call_started');
+            setIsCallActive(true);
+            break;
+
+          case 'emergency_trigger':
+            console.log('Received emergency_trigger');
+            setShowEmergency(true);
+            break;
+
+          case 'call_transcript_update':
+            console.log('Received call_transcript_update:', event.data);
+            setTranscript(prev => [...prev, event.data]);
+            break;
+
+          case 'chat_response':
+            console.log('Received chat_response:', event.data);
+            setIsLoading(false);
+            setMessages(prev => [...prev, { role: 'model', text: event.data.content }]);
+            break;
+
+          case 'error':
+            console.error('Backend error:', event.data);
+            setIsLoading(false);
+            break;
+        }
       }
-    });
-    socketRef.current = socket;
+    } catch (error) {
+      console.error('Error polling for events:', error);
+    }
+  };
 
-    socket.on('connect', () => {
-      console.log('Connected to backend WS, socket id:', socket.id);
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('Disconnected from backend WS:', reason);
-    });
-
-    // 2. Listen for Events
-    socket.on('show_clinics', (data) => {
-      console.log('Received show_clinics:', data);
-      setClinics(data);
-      setActiveWidget('location');
-    });
-
-    socket.on('show_calendar', (slots) => {
-      console.log('Received show_calendar:', slots);
-      setAvailableSlots(slots);
-      setActiveWidget('schedule');
-    });
-
-    socket.on('call_started', () => {
-      console.log('Received call_started');
-      setIsCallActive(true);
-      // Keep widget if open, or minimized
-    });
-
-    socket.on('emergency_trigger', () => {
-      console.log('Received emergency_trigger');
-      setShowEmergency(false); // Close modal if open
-      setShowEmergency(true); // Re-open or just ensure state
-    });
-
-    socket.on('call_transcript_update', (callId, line) => {
-      console.log('Received call_transcript_update:', callId, line);
-      setTranscript(prev => [...prev, line]);
-    });
-
-    socket.on('chat_response', (msg) => {
-      console.log('Received chat_response:', msg);
-      setIsLoading(false);
-      setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
-    });
-
-    socket.on('error', (msg) => {
-      console.error('Socket error:', msg);
-      setIsLoading(false);
-    });
+  useEffect(() => {
+    // Start polling for events
+    pollingIntervalRef.current = setInterval(pollForEvents, 1000); // Poll every 1 second
 
     return () => {
-      socket.disconnect();
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
     };
   }, []);
 
@@ -144,24 +134,18 @@ const Chat: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Send to backend via REST (or WS, but REST handles the ElevenLabs agent initiation better initially)
+      // Send to backend via REST with session ID
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true'
         },
-        body: JSON.stringify({ message: userMsg })
+        body: JSON.stringify({ message: userMsg, sessionId: sessionIdRef.current })
       });
 
-      // Response will come via WebSocket (chat_response event)
-      // Just await the REST call to ensure message was sent
+      // Response will come via polling (chat_response event)
       await res.json();
-      // If signed URL, the frontend ElevenLabs widget would handle it, 
-      // but here we are simulating text chat via our backend proxy for now.
-      // Wait, if we use conversational AI, it's audio.
-      // If we use text-to-agent, we need to know how.
-      // Assuming backend proxies text to agent via some API or mocks it for now.
 
     } catch (error) {
       console.error("Chat Error:", error);
@@ -172,14 +156,11 @@ const Chat: React.FC = () => {
 
   const handleEmergencyConfirm = async () => {
     setShowEmergency(false);
-    // Call the mock emergency line
-    // In demo, we might just show a "Calling..." UI or use Twilio
-    // For now, let's pretend a call started
     setIsCallActive(true);
-    // Trigger backend call
+    // Trigger backend call with session ID
     await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'emergency' }),
+      body: JSON.stringify({ type: 'emergency', sessionId: sessionIdRef.current }),
       headers: {
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true'

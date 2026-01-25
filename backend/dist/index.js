@@ -1,10 +1,10 @@
 import express from 'express';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import WebSocket, { WebSocketServer } from 'ws';
 import Twilio from 'twilio';
+import { setupMcpRoutes } from './mcp.js';
 dotenv.config({ path: '../.env' });
 const { ELEVENLABS_API_KEY, ELEVENLABS_AGENT_ID, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, EMERGENCY_PHONE_NUMBER, PORT = 3001 } = process.env;
 // Validate required env vars
@@ -16,18 +16,13 @@ if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
 }
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
 // Initialize Twilio client
 const twilioClient = Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const eventQueues = new Map();
 const activeCalls = new Map();
 // Helper: Get ElevenLabs signed URL
 async function getSignedUrl() {
@@ -40,33 +35,52 @@ async function getSignedUrl() {
     const data = await response.json();
     return data.signed_url;
 }
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-    console.log(`[WebSocket] Client connected: ${socket.id}`);
-    socket.on('disconnect', () => {
-        console.log(`[WebSocket] Client disconnected: ${socket.id}`);
-    });
-});
-// Emit helpers
-function emitCallStarted(callSid) {
-    io.emit('call_started', callSid);
+// Helper functions for event queuing
+function addEventToSession(sessionId, type, data) {
+    if (!eventQueues.has(sessionId)) {
+        eventQueues.set(sessionId, []);
+    }
+    eventQueues.get(sessionId).push({ type, data });
+    console.log(`[Event] Added ${type} event to session ${sessionId}`);
 }
-function emitTranscriptUpdate(callSid, speaker, text) {
-    io.emit('call_transcript_update', { callSid, speaker, text });
+function emitCallStarted(callSid, sessionId) {
+    if (sessionId) {
+        addEventToSession(sessionId, 'call_started', callSid);
+    }
 }
-function emitCallEnded(callSid, transcript) {
-    io.emit('call_ended', { callSid, transcript });
+function emitTranscriptUpdate(callSid, speaker, text, sessionId) {
+    if (sessionId) {
+        addEventToSession(sessionId, 'call_transcript_update', { callSid, speaker, text });
+    }
 }
-function emitChatResponse(content) {
-    io.emit('chat_response', { role: 'assistant', content });
+function emitCallEnded(callSid, transcript, sessionId) {
+    if (sessionId) {
+        addEventToSession(sessionId, 'call_ended', { callSid, transcript });
+    }
+}
+function emitChatResponse(content, sessionId) {
+    if (sessionId) {
+        addEventToSession(sessionId, 'chat_response', { role: 'assistant', content });
+    }
 }
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+// ============ POLLING ENDPOINT ============
+app.get('/events', (req, res) => {
+    const sessionId = req.query.sessionId;
+    if (!sessionId) {
+        return res.status(400).json({ error: 'sessionId required' });
+    }
+    // Get and clear events for this session
+    const events = eventQueues.get(sessionId) || [];
+    eventQueues.delete(sessionId);
+    res.json(events);
+});
 // ============ CHAT ROUTE (Text-only ElevenLabs) ============
 // Helper to initiate a call (used by both chat tool and direct API)
-async function initiateCall(phoneNumber, prompt, firstMessage, hostUrl) {
+async function initiateCall(phoneNumber, prompt, firstMessage, hostUrl, sessionId) {
     const call = await twilioClient.calls.create({
         from: TWILIO_PHONE_NUMBER,
         to: phoneNumber,
@@ -77,15 +91,19 @@ async function initiateCall(phoneNumber, prompt, firstMessage, hostUrl) {
         twilioStreamWs: null,
         streamSid: null,
         callSid: call.sid,
-        transcript: []
+        transcript: [],
+        sessionId
     });
-    emitCallStarted(call.sid);
+    emitCallStarted(call.sid, sessionId);
     return call.sid;
 }
+// Setup MCP server routes
+setupMcpRoutes(app, { initiateCall, activeCalls, twilioClient, getSignedUrl });
+console.log('[Backend] MCP server routes initialized');
 // POST /chat - Text chat with ElevenLabs agent (text-only mode)
 app.post('/chat', async (req, res) => {
-    const { message } = req.body;
-    console.log('[Chat] Received message:', message);
+    const { message, sessionId } = req.body;
+    console.log('[Chat] Received message:', message, 'sessionId:', sessionId);
     if (!message) {
         return res.status(400).json({ error: 'message required' });
     }
@@ -169,7 +187,7 @@ Always be helpful, empathetic, and provide accurate health information.`
                         const callMessage = toolParams.message || 'Hello, this is Health.me calling.';
                         const recipientName = toolParams.recipient_name || 'the recipient';
                         try {
-                            const callSid = await initiateCall(phoneNumber, `You are calling ${recipientName} on behalf of the user. Your message: ${callMessage}`, `Hello! This is Health.me calling on behalf of your contact. ${callMessage}`, req.headers.host || 'localhost:3001');
+                            const callSid = await initiateCall(phoneNumber, `You are calling ${recipientName} on behalf of the user. Your message: ${callMessage}`, `Hello! This is Health.me calling on behalf of your contact. ${callMessage}`, req.headers.host || 'localhost:3001', sessionId);
                             // Send tool result back to agent
                             ws.send(JSON.stringify({
                                 type: 'client_tool_result',
@@ -191,7 +209,7 @@ Always be helpful, empathetic, and provide accurate health information.`
                 if (msg.type === 'agent_response_end' || msg.type === 'conversation_end') {
                     if (!hasResponded && responseText) {
                         hasResponded = true;
-                        emitChatResponse(responseText);
+                        emitChatResponse(responseText, sessionId);
                         ws.close();
                         res.json({ success: true, message: responseText });
                     }
@@ -220,7 +238,7 @@ Always be helpful, empathetic, and provide accurate health information.`
             if (!hasResponded) {
                 hasResponded = true;
                 if (responseText) {
-                    emitChatResponse(responseText);
+                    emitChatResponse(responseText, sessionId);
                     res.json({ success: true, message: responseText });
                 }
                 else {
@@ -234,7 +252,7 @@ Always be helpful, empathetic, and provide accurate health information.`
                 hasResponded = true;
                 ws.close();
                 if (responseText) {
-                    emitChatResponse(responseText);
+                    emitChatResponse(responseText, sessionId);
                     res.json({ success: true, message: responseText });
                 }
                 else {
@@ -252,15 +270,32 @@ Always be helpful, empathetic, and provide accurate health information.`
 // POST /call/start - Initiate an outbound call
 app.post('/call/start', async (req, res) => {
     try {
-        const { phoneNumber, prompt, firstMessage } = req.body;
+        const { phoneNumber, prompt, firstMessage, sessionId } = req.body;
         const targetNumber = phoneNumber || EMERGENCY_PHONE_NUMBER;
         console.log(`[Call] Initiating call to ${targetNumber}`);
-        const callSid = await initiateCall(targetNumber, prompt || 'You are a helpful health assistant.', firstMessage || 'Hello! How can I help you today?', req.headers.host || 'localhost:3001');
+        const callSid = await initiateCall(targetNumber, prompt || 'You are a helpful health assistant.', firstMessage || 'Hello! How can I help you today?', req.headers.host || 'localhost:3001', sessionId);
         res.json({ success: true, callSid });
     }
     catch (error) {
         console.error('[Call] Error starting call:', error);
         res.status(500).json({ error: 'Failed to start call' });
+    }
+});
+// POST /call/initiate - Alias for /call/start
+app.post('/call/initiate', async (req, res) => {
+    try {
+        const { type, sessionId } = req.body;
+        const targetNumber = type === 'emergency' ? EMERGENCY_PHONE_NUMBER : req.body.phoneNumber;
+        if (!targetNumber) {
+            return res.status(400).json({ error: 'phoneNumber or emergency type required' });
+        }
+        console.log(`[Call] Initiating ${type || 'regular'} call to ${targetNumber}`);
+        const callSid = await initiateCall(targetNumber, req.body.prompt || 'You are a helpful health assistant.', req.body.firstMessage || 'Hello! How can I help you today?', req.headers.host || 'localhost:3001', sessionId);
+        res.json({ success: true, callSid });
+    }
+    catch (error) {
+        console.error('[Call] Error initiating call:', error);
+        res.status(500).json({ error: 'Failed to initiate call' });
     }
 });
 // GET/POST /call/twiml - TwiML response for Twilio
@@ -293,7 +328,7 @@ app.post('/call/end', async (req, res) => {
             if (callData.elevenLabsWs?.readyState === WebSocket.OPEN) {
                 callData.elevenLabsWs.close();
             }
-            emitCallEnded(callSid, callData.transcript);
+            emitCallEnded(callSid, callData.transcript, callData.sessionId);
             activeCalls.delete(callSid);
         }
         res.json({ success: true });
@@ -387,8 +422,8 @@ wss.on('connection', async (twilioWs) => {
                             const agentText = message.agent_response_event?.agent_response;
                             if (agentText && callSid) {
                                 console.log(`[Agent] ${agentText}`);
-                                emitTranscriptUpdate(callSid, 'agent', agentText);
                                 const callData = activeCalls.get(callSid);
+                                emitTranscriptUpdate(callSid, 'agent', agentText, callData?.sessionId);
                                 if (callData) {
                                     callData.transcript.push(`Agent: ${agentText}`);
                                 }
@@ -398,8 +433,8 @@ wss.on('connection', async (twilioWs) => {
                             const userText = message.user_transcription_event?.user_transcript;
                             if (userText && callSid) {
                                 console.log(`[User] ${userText}`);
-                                emitTranscriptUpdate(callSid, 'user', userText);
                                 const callData = activeCalls.get(callSid);
+                                emitTranscriptUpdate(callSid, 'user', userText, callData?.sessionId);
                                 if (callData) {
                                     callData.transcript.push(`User: ${userText}`);
                                 }
@@ -456,7 +491,7 @@ wss.on('connection', async (twilioWs) => {
                     if (callSid) {
                         const callData = activeCalls.get(callSid);
                         if (callData) {
-                            emitCallEnded(callSid, callData.transcript);
+                            emitCallEnded(callSid, callData.transcript, callData.sessionId);
                             activeCalls.delete(callSid);
                         }
                     }
@@ -477,6 +512,8 @@ wss.on('connection', async (twilioWs) => {
         console.error('[Twilio] WebSocket error:', error);
     });
 });
+// Export functions for MCP tools
+export { initiateCall, activeCalls, twilioClient, getSignedUrl };
 // Start server
 httpServer.listen(PORT, () => {
     console.log(`[Backend] Server running on http://localhost:${PORT}`);
