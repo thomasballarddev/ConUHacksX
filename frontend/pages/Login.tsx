@@ -16,6 +16,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const { signInWithGoogle, user } = useAuth();
   const [isRequestingLocation, setIsRequestingLocation] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,12 +101,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     className="w-full px-4 py-3.5 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]" 
                     id="password" 
                     placeholder="••••••••" 
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     defaultValue="password"
                     required
                   />
-                  <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary">
-                    <span className="material-symbols-outlined text-lg">visibility</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors focus:outline-none"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
                   </button>
                 </div>
               </div>

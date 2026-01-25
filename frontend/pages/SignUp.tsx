@@ -11,6 +11,8 @@ interface SignUpProps {
 const SignUp: React.FC<SignUpProps> = ({ onSignUp }) => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,24 +102,41 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp }) => {
                     className="w-full px-4 py-3.5 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]" 
                     id="password" 
                     placeholder="Min. 8 characters" 
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                   />
-                  <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary">
-                    <span className="material-symbols-outlined text-lg">visibility</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors focus:outline-none"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
                   </button>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-400 ml-1" htmlFor="confirmPassword">Confirm Password</label>
-                <input 
-                  className="w-full px-4 py-3.5 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]" 
-                  id="confirmPassword" 
-                  placeholder="••••••••" 
-                  type="password"
-                  required
-                />
+                <div className="relative">
+                  <input 
+                    className="w-full px-4 py-3.5 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]" 
+                    id="confirmPassword" 
+                    placeholder="••••••••" 
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                  />
+                   <button 
+                    type="button" 
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors focus:outline-none"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-start gap-3 py-2">
