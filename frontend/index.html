@@ -1,13 +1,152 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Assistant | AI Medical Consultation</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🏥</span>
+        <h1>Health Assistant</h1>
+      </div>
+      <div class="connection-status" id="connectionStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Main Chat Container -->
+    <main class="chat-container">
+      <!-- Messages Area -->
+      <div class="messages" id="messages">
+        <div class="message assistant">
+          <div class="message-content">
+            <p>Hello! I'm your AI health assistant. You can tell me about your symptoms by typing below or using voice input. I'm here to help assess your situation and connect you with care if needed.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Call Status Banner (hidden by default) -->
+      <div class="call-banner hidden" id="callBanner">
+        <div class="call-status">
+          <span class="call-icon">📞</span>
+          <span class="call-text" id="callText">Calling clinic...</span>
+        </div>
+        <div class="call-animation">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <!-- Calendar Modal (hidden by default) -->
+      <div class="calendar-modal hidden" id="calendarModal">
+        <div class="modal-content">
+          <h3>Select Appointment Time</h3>
+          <p class="modal-subtitle">Choose your preferred time slot:</p>
+          <div class="slots-container" id="slotsContainer">
+            <!-- Slots will be dynamically inserted -->
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancelSlot">Cancel</button>
+            <button class="btn btn-primary" id="confirmSlot" disabled>Confirm</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Question Modal (hidden by default) -->
+      <div class="question-modal hidden" id="questionModal">
+        <div class="modal-content">
+          <h3>📞 Question from Receptionist</h3>
+          <p class="modal-subtitle" id="questionText">Loading question...</p>
+          <textarea 
+            id="questionAnswer" 
+            placeholder="Type your answer..." 
+            rows="2"
+          ></textarea>
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="submitAnswer">Send Answer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Call Confirmation Modal (hidden by default) -->
+      <div class="confirm-modal hidden" id="confirmCallModal">
+        <div class="modal-content">
+          <h3>📞 Call Clinic?</h3>
+          <p class="modal-subtitle" id="confirmCallReason">Would you like me to call the clinic to schedule an appointment?</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" id="declineCall">No, not now</button>
+            <button class="btn btn-primary" id="confirmCall">Yes, find clinics</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clinic Map Modal (hidden by default) -->
+      <div class="map-modal hidden" id="mapModal">
+        <div class="map-modal-content">
+          <div class="map-header">
+            <h3>🏥 Select a Clinic</h3>
+            <button class="btn-close" id="closeMap">&times;</button>
+          </div>
+          <div class="map-body">
+            <div id="clinicMap" class="clinic-map"></div>
+            <div class="clinic-list" id="clinicList">
+              <p class="loading-text">Searching for nearby clinics...</p>
+            </div>
+          </div>
+          <div class="selected-clinic hidden" id="selectedClinicInfo">
+            <div class="clinic-details">
+              <h4 id="selectedClinicName">Clinic Name</h4>
+              <p id="selectedClinicAddress">Address</p>
+              <p id="selectedClinicRating"></p>
+            </div>
+            <button class="btn btn-primary" id="callSelectedClinic">📞 Call This Clinic</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-container">
+        <div class="input-wrapper">
+          <textarea 
+            id="messageInput" 
+            placeholder="Describe your symptoms..." 
+            rows="1"
+            autocomplete="off"
+          ></textarea>
+          <div class="input-actions">
+            <button class="btn-icon" id="voiceBtn" title="Voice input">
+              <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
+            <button class="btn-icon btn-send" id="sendBtn" title="Send message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="voice-indicator hidden" id="voiceIndicator">
+          <div class="voice-waves">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <span class="voice-text">Listening...</span>
+          <button class="btn-stop" id="stopVoice">Stop</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@11labs/client@latest/dist/umd/elevenlabs.min.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>
