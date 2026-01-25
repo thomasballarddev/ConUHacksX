@@ -10,6 +10,8 @@ interface Clinic {
   distance: number;
   longitude: number;
   latitude: number;
+  rating: number;
+  phone: string;
 }
 
 interface LocationWidgetProps {
@@ -22,35 +24,77 @@ const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 // Base location: 1450 Guy St, Montreal, Quebec H3H 0A1
 const BASE_LOCATION = { longitude: -73.5791, latitude: 45.4953 };
 
-// Hardcoded nearby clinics
-const NEARBY_CLINICS: Clinic[] = [
+// Real Montreal clinics for the hackathon demo
+const CLINIC_DATA = [
   {
     id: 'clinic-1',
     name: 'Clinique Médicale Crescent',
     address: '1198 Crescent St, Montreal, Quebec H3G 2A9',
-    longitude: -73.5772,
-    latitude: 45.4997,
-    distance: 0.3
+    distance: 0.3,
+    rating: 2.1,
+    phone: '(514) 933-8383'
   },
   {
     id: 'clinic-2',
-    name: 'Priveo Santé',
-    address: '3550 Chem. de la Côte-des-Neiges bureau 490, Montreal, Quebec H3H 1V4',
-    longitude: -73.6097,
-    latitude: 45.4955,
-    distance: 1.2
+    name: 'Clinique Médicale Privée UnionMD',
+    address: '1191 Avenue Union, Montreal, Quebec H3B 3C3',
+    distance: 0.5,
+    rating: 4.5,
+    phone: '(514) 332-4546'
+  },
+  {
+    id: 'clinic-3',
+    name: 'CuraMed',
+    address: '4150 Rue Sainte-Catherine O #330, Westmount, Quebec H3Z 2Y5',
+    distance: 1.8,
+    rating: 4.8,
+    phone: '(514) 612-2430'
   }
 ];
 
 const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) => {
   const { userLocation } = useLocation();
   const mapRef = useRef<MapRef>(null);
-  const [clinics] = useState<Clinic[]>(NEARBY_CLINICS);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
   const [routeGeoJson, setRouteGeoJson] = useState<GeoJSON.Feature | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Use user location or default to base location (1450 Guy St)
   const mapCenter = userLocation || BASE_LOCATION;
+
+  // Geocode clinic addresses on mount
+  useEffect(() => {
+    const geocodeClinics = async () => {
+      setIsLoading(true);
+      const geocodedClinics: Clinic[] = [];
+      
+      for (const clinic of CLINIC_DATA) {
+        try {
+          const response = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(clinic.address)}.json?` +
+            `access_token=${MAPBOX_TOKEN}&limit=1`
+          );
+          const data = await response.json();
+          
+          if (data.features && data.features[0]) {
+            geocodedClinics.push({
+              ...clinic,
+              longitude: data.features[0].center[0],
+              latitude: data.features[0].center[1]
+            });
+          }
+        } catch (error) {
+          console.error(`Error geocoding ${clinic.name}:`, error);
+        }
+      }
+      
+      setClinics(geocodedClinics);
+      setIsLoading(false);
+    };
+    
+    geocodeClinics();
+  }, []);
 
   // Force map resize when it loads
   const onMapLoad = useCallback(() => {
@@ -198,7 +242,11 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
 
         {/* Clinic List */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
-          {clinics.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <span className="material-symbols-outlined animate-spin text-3xl text-gray-400">progress_activity</span>
+            </div>
+          ) : clinics.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
               <p>No clinics found nearby</p>
@@ -225,7 +273,22 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
                     {clinic.distance.toFixed(1)} mi
                   </span>
                 </div>
-                <p className="text-xs text-gray-400 mb-3 line-clamp-2 ml-8">{clinic.address}</p>
+                <div className="flex items-center gap-1 text-orange-500 mb-2 ml-8">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span 
+                      key={star} 
+                      className={`material-symbols-outlined text-[16px] ${star <= Math.round(clinic.rating) ? 'fill-1' : 'opacity-30'}`}
+                    >
+                      star
+                    </span>
+                  ))}
+                  <span className="text-sm font-black ml-1">{clinic.rating}</span>
+                </div>
+                <p className="text-xs text-gray-400 mb-1 ml-8">{clinic.address}</p>
+                <p className="text-xs text-gray-500 font-medium mb-3 ml-8">
+                  <span className="material-symbols-outlined text-[12px] align-middle mr-1">call</span>
+                  {clinic.phone}
+                </p>
                 {selectedClinic?.id === clinic.id && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleConfirmSelection(); }}
