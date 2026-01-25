@@ -36,6 +36,9 @@ When a user asks about their health profile, health summary, medical history, or
 
 IMPORTANT: Users may have typos or autocorrect errors. Always interpret their messages in the context of the conversation. For example, if you asked about "nausea" and they respond with "Nassau", they likely mean "nausea" - not the location. Use common sense to infer meaning from context.
 
+Nearby Clinics Context (Use this to resolve references like "first one", "second one"):
+${clinics.map((c, i) => `${i + 1}. ${c.name}`).join('\n')}
+
 Keep responses conversational and helpful.`;
 
 
@@ -96,7 +99,7 @@ const functionDeclarations: FunctionDeclaration[] = [
 // Execute function calls
 async function executeFunctionCall(name: string, args: Record<string, unknown>): Promise<string> {
   console.log(`[Gemini] Executing function: ${name}`, args);
-  
+
   switch (name) {
     case "show_nearby_clinics": {
       const symptoms = args.symptoms as string || 'general health concerns';
@@ -104,14 +107,14 @@ async function executeFunctionCall(name: string, args: Record<string, unknown>):
       emitShowClinics(clinics);
       return `Displayed 3 nearby clinics to the user. The patient is experiencing: ${symptoms}. Ask them which clinic they'd like to book with.`;
     }
-    
+
     case "initiate_clinic_call": {
       const clinicName = args.clinic_name as string;
       const reason = args.reason as string;
       // Find clinic phone number
       const clinic = clinics.find(c => c.name.toLowerCase().includes(clinicName.toLowerCase()));
       const phone = clinic?.phone || process.env.TWILIO_PHONE_NUMBER || '+14388083471';
-      
+
       try {
         const result = await initiateClinicCall(phone, reason, clinicName);
         return `Call initiated to ${clinicName}. Our AI agent is now speaking with the receptionist on behalf of the patient. The user will see updates and be asked for input when needed (like choosing appointment times).`;
@@ -119,7 +122,7 @@ async function executeFunctionCall(name: string, args: Record<string, unknown>):
         return `Failed to initiate call: ${error}. Please try again.`;
       }
     }
-    
+
     case "get_call_status": {
       const status = getActiveCallStatus();
       if (status) {
