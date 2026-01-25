@@ -1,19 +1,29 @@
 import { Router } from 'express';
 import { sendChatMessage } from '../services/elevenlabs.js';
+import { emitChatResponse } from '../services/websocket.js';
 const router = Router();
-// POST /chat - Initialize chat or send message
+// POST /chat - Send message to ElevenLabs agent
 router.post('/', async (req, res) => {
     try {
-        const { message } = req.body;
-        // For now, we prefer to return a signed URL for the frontend to connect 
-        // directly to ElevenLabs WebSocket for low latency, 
-        // OR we just return the agent config if using the widget.
-        // If the frontend calls this to "start" the session:
-        const result = await sendChatMessage(message);
-        res.json(result);
+        const { message, sessionId } = req.body;
+        console.log('[Chat] Received message:', message);
+        // Send to ElevenLabs agent and get response
+        const result = await sendChatMessage(message, sessionId || 'default');
+        // Response is already emitted via WebSocket in elevenlabs service
+        // Also return via REST for redundancy
+        res.json({
+            success: true,
+            message: result.message
+        });
     }
     catch (error) {
-        console.error('Chat error:', error);
+        console.error('[Chat] Error:', error);
+        // Emit error response via WebSocket
+        emitChatResponse({
+            role: 'assistant',
+            content: 'Sorry, I encountered an error processing your request. Please try again.',
+            timestamp: new Date().toISOString()
+        });
         res.status(500).json({ error: 'Failed to process chat request' });
     }
 });
