@@ -50,6 +50,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
             <span className="material-symbols-outlined text-xl">home</span>
             <span className="text-sm">Home</span>
           </NavLink>
+          <NavLink 
+            to="/calendar" 
+            className={({ isActive }) => 
+              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
+            }
+          >
+            <span className="material-symbols-outlined text-xl">calendar_month</span>
+            <span className="text-sm">Schedule</span>
+          </NavLink>
 
           <NavLink 
             to="/profile" 
