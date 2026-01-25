@@ -88,7 +88,7 @@ mcpServer.tool(
 // Tool: Emergency
 mcpServer.tool(
   "emergency",
-  "Trigger the 911 emergency sequence for critical life-threatening situations.",
+  "Trigger the 438 520 2457 emergency sequence for critical life-threatening situations.",
   {},
   async () => {
     console.log("[MCP] Tool called: emergency");

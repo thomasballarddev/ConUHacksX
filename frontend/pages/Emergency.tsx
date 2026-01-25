@@ -114,7 +114,7 @@ const Emergency: React.FC = () => {
         <div className="bg-white py-3 px-6 flex items-center justify-center border-t border-black/5">
           <div className="flex items-center gap-2 text-gray-300">
             <span className="material-symbols-outlined text-xs">verified_user</span>
-            <span className="text-[9px] font-bold uppercase tracking-widest">E911 Certified • Health.me</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest">438 520 2457 • Health.me</span>
           </div>
         </div>
       </div>

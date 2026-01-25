@@ -42,7 +42,7 @@ const EmergencyModal: React.FC<EmergencyModalProps> = ({
 
         <div className="p-8 text-center">
           <div className="size-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <span className="material-symbols-outlined text-4xl text-red-600">e911_emergency</span>
+            <span className="material-symbols-outlined text-4xl text-red-600">emergency</span>
           </div>
 
           <h2 className="text-2xl font-black text-gray-900 mb-2 leading-tight">Emergency Detected</h2>
