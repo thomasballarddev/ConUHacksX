@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,7 +20,7 @@ const Header: React.FC = () => {
       <div className="flex items-center space-x-3">
         {/* Notifications */}
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="p-2.5 rounded-full hover:bg-black/5 transition-colors text-gray-400 hover:text-primary relative"
           >
@@ -40,8 +39,8 @@ const Header: React.FC = () => {
                 </div>
                 <div className="max-h-80 overflow-y-auto custom-scrollbar p-3 space-y-2">
                   {notifications.map((notif) => (
-                    <div 
-                      key={notif.id} 
+                    <div
+                      key={notif.id}
                       className={`p-4 rounded-2xl cursor-pointer transition-all border ${notif.unread ? 'bg-white border-primary/20 shadow-sm' : 'bg-white/50 border-black/5 hover:bg-white'}`}
                     >
                       <div className="flex gap-3">
@@ -65,7 +64,7 @@ const Header: React.FC = () => {
         </div>
 
         {/* Profile */}
-        <button 
+        <button
           onClick={() => navigate('/settings')}
           className="size-9 rounded-full overflow-hidden border-2 border-black/5 hover:border-primary transition-all"
         >
@@ -73,9 +72,9 @@ const Header: React.FC = () => {
         </button>
 
         <div className="h-6 w-[1px] bg-black/5 mx-1"></div>
-        
+
         {/* Emergency Button */}
-        <button 
+        <button
           onClick={() => navigate('/emergency')}
           className="group flex items-center gap-2 bg-white border border-red-100 hover:border-red-500 px-4 py-2 rounded-full transition-all shadow-sm hover:shadow-md"
         >
