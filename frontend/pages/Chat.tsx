@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import AppointmentScheduler from '../components/AppointmentScheduler';
+import LiveCallPanel from '../components/LiveCallPanel';
+import LocationWidget from '../components/LocationWidget';
 import { useNavigate } from 'react-router-dom';
 
 interface Message {
@@ -8,9 +10,27 @@ interface Message {
   text: string;
 }
 
-import AppointmentScheduler from '../components/AppointmentScheduler';
-import LiveCallPanel from '../components/LiveCallPanel';
-import LocationWidget from '../components/LocationWidget';
+import EmergencyModal from '../components/EmergencyModal';
+import { io, Socket } from 'socket.io-client';
+
+// WebSocket event interface (matching backend)
+interface ServerToClientEvents {
+  show_clinics: (clinics: any[]) => void;
+  show_calendar: (slots: any[]) => void;
+  call_started: (callId: string) => void;
+  call_on_hold: (callId: string) => void;
+  call_resumed: (callId: string) => void;
+  call_ended: (callId: string, transcript: string[]) => void;
+  call_transcript_update: (callId: string, line: string) => void;
+  emergency_trigger: () => void;
+  chat_response: (message: { role: 'user' | 'assistant', content: string }) => void;
+  error: (message: string) => void;
+}
+
+interface ClientToServerEvents {
+  chat_message: (message: string) => void;
+}
+
 
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -35,6 +55,59 @@ const Chat: React.FC = () => {
     }
   }, [messages, isLoading]);
 
+  // Socket Ref
+  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+  
+  // Widget Data
+  const [clinics, setClinics] = useState<any[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [transcript, setTranscript] = useState<string[]>([]);
+
+  useEffect(() => {
+    // 1. Connect to Backend WebSocket
+    const socket = io('http://localhost:3001'); // Assume local for now, env var later
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Connected to backend WS');
+    });
+
+    // 2. Listen for Events
+    socket.on('show_clinics', (data) => {
+      setClinics(data);
+      setActiveWidget('location');
+    });
+
+    socket.on('show_calendar', (slots) => {
+      setAvailableSlots(slots);
+      setActiveWidget('schedule');
+    });
+
+    socket.on('call_started', () => {
+      setIsCallActive(true);
+      // Keep widget if open, or minimized
+    });
+
+    socket.on('emergency_trigger', () => {
+      setShowEmergency(false); // Close modal if open
+      setShowEmergency(true); // Re-open or just ensure state
+    });
+
+    socket.on('call_transcript_update', (callId, line) => {
+      setTranscript(prev => [...prev, line]);
+    });
+
+    socket.on('chat_response', (msg) => {
+      setIsLoading(false);
+      setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -44,26 +117,48 @@ const Chat: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [...messages, { role: 'user', text: userMsg }].map(m => ({
-          role: m.role,
-          parts: [{ text: m.text }]
-        })),
-        config: {
-          systemInstruction: 'You are Health.me, a professional medical AI assistant. You are knowledgeable about symptoms, medication, and clinical processes. Be empathetic, clinical yet accessible, and always prioritize user safety. If symptoms sound urgent, recommend using the Emergency Alert feature. Always state you are an AI assistant.',
-        }
+      // Send to backend via REST (or WS, but REST handles the ElevenLabs agent initiation better initially)
+      const res = await fetch('http://localhost:3001/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: userMsg })
       });
-
-      const aiText = response.text || "I apologize, I'm having trouble processing that right now.";
-      setMessages(prev => [...prev, { role: 'model', text: aiText }]);
+      
+      const data = await res.json();
+      
+      // If backend returns a message directly (e.g. signedUrl or error)
+      if (data.message && !data.conversation_id) { 
+         // Fallback if not using signed URL flow for chat messages
+         setMessages(prev => [...prev, { role: 'model', text: data.message }]);
+         setIsLoading(false);
+      }
+      // If signed URL, the frontend ElevenLabs widget would handle it, 
+      // but here we are simulating text chat via our backend proxy for now.
+      // Wait, if we use conversational AI, it's audio.
+      // If we use text-to-agent, we need to know how.
+      // Assuming backend proxies text to agent via some API or mocks it for now.
+      
     } catch (error) {
       console.error("Chat Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "I encountered a connectivity issue. Please try again." }]);
-    } finally {
+      setMessages(prev => [...prev, { role: 'model', text: "Connection error. Please check backend." }]);
       setIsLoading(false);
     }
+  };
+  
+  const handleEmergencyConfirm = async () => {
+    setShowEmergency(false);
+    // Call the mock emergency line
+    // In demo, we might just show a "Calling..." UI or use Twilio
+    // For now, let's pretend a call started
+    setIsCallActive(true);
+    // Trigger backend call
+    await fetch('http://localhost:3001/call/initiate', {
+        method: 'POST', 
+        body: JSON.stringify({ type: 'emergency' }),
+        headers: {'Content-Type': 'application/json'}
+    });
   };
 
   const handleNewChat = () => {
@@ -236,6 +331,7 @@ const Chat: React.FC = () => {
                 <LocationWidget 
                   onClose={() => setActiveWidget('none')} 
                   onSelect={() => setActiveWidget('schedule')}
+                  clinics={clinics}
                 />
               )}
               {activeWidget === 'schedule' && (
@@ -243,6 +339,7 @@ const Chat: React.FC = () => {
                    <AppointmentScheduler 
                      onClose={() => setActiveWidget('none')}
                      onConfirm={handleAppointmentConfirm}
+                     availableSlots={availableSlots}
                    />
                 </div>
               )}
@@ -255,11 +352,18 @@ const Chat: React.FC = () => {
               <LiveCallPanel 
                 onClose={() => setIsCallActive(false)} 
                 minimized={activeWidget !== 'none'}
+                transcript={transcript}
               />
             </div>
           )}
         </div>
       </div>
+      {showEmergency && (
+        <EmergencyModal 
+          onCancel={() => setShowEmergency(false)}
+          onConfirm={handleEmergencyConfirm}
+        />
+      )}
     </div>
   );
 };

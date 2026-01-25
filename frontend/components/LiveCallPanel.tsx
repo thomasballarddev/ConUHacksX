@@ -3,9 +3,10 @@ import React from 'react';
 interface LiveCallPanelProps {
   onClose?: () => void;
   minimized?: boolean;
+  transcript?: string[];
 }
 
-const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onClose, minimized = false }) => {
+const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onClose, minimized = false, transcript = [] }) => {
   return (
     <div className={`border-l border-black/5 flex flex-col overflow-hidden animate-in slide-in-from-right duration-500 shadow-xl z-20 w-full transition-all ${
       minimized ? 'flex-shrink-0 border-t border-black/5 bg-red-600' : 'h-full bg-soft-cream'
@@ -30,35 +31,28 @@ const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onClose, minimized = fals
         </div>
       )}
 
-      {/* Transcript Area - Hidden when minimized */}
+       {/* Transcript Area - Hidden when minimized */}
       {!minimized && (
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar bg-soft-cream/50">
-           <div className="flex gap-3">
-              <div className="size-8 rounded-full overflow-hidden border border-black/5 flex-shrink-0">
-                 <img src="https://picsum.photos/seed/clinic/100/100" className="w-full h-full object-cover" alt="Clinic" />
-              </div>
-              <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-black/5">
-                 <p className="text-xs md:text-sm text-primary leading-relaxed">City Health Center, how can I help you today?</p>
-              </div>
-           </div>
-
-           <div className="flex flex-row-reverse gap-3">
-              <div className="size-8 bg-primary rounded-full flex items-center justify-center shadow-md flex-shrink-0">
-                 <span className="material-symbols-outlined text-white text-sm fill-1">smart_toy</span>
-              </div>
-              <div className="bg-primary p-4 rounded-2xl rounded-tr-none shadow-xl text-white">
-                 <p className="text-xs md:text-sm leading-relaxed">Hello, I'm calling from Health.me for Sam Smith. We'd like to book an appointment for Tuesday at 08:00 AM.</p>
-              </div>
-           </div>
-
-           <div className="flex gap-3">
-              <div className="size-8 rounded-full overflow-hidden border border-black/5 flex-shrink-0">
-                 <img src="https://picsum.photos/seed/clinic/100/100" className="w-full h-full object-cover" alt="Clinic" />
-              </div>
-              <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-black/5">
-                 <p className="text-xs md:text-sm text-primary leading-relaxed">Checking now... Yes, we have that slot open with Dr. Aris.</p>
-              </div>
-           </div>
+           {transcript.length === 0 ? (
+             <div className="text-center text-gray-400 italic mt-10">Connecting to clinic...</div>
+           ) : (
+             transcript.map((line, i) => {
+               const isAgent = line.startsWith('Agent:') || line.startsWith('Health.me:');
+               const content = line.split(':').slice(1).join(':').trim() || line;
+               
+               return (
+                 <div key={i} className={`flex gap-3 ${isAgent ? 'flex-row-reverse' : ''}`}>
+                    <div className={`size-8 rounded-full flex items-center justify-center flex-shrink-0 border border-black/5 overflow-hidden ${isAgent ? 'bg-primary text-white shadow-md' : 'bg-white'}`}>
+                       {isAgent ? <span className="material-symbols-outlined text-sm fill-1">smart_toy</span> : <img src="https://picsum.photos/seed/clinic/100/100" className="w-full h-full object-cover" alt="Clinic" />}
+                    </div>
+                    <div className={`p-4 rounded-2xl shadow-sm border border-black/5 max-w-[80%] ${isAgent ? 'bg-primary text-white rounded-tr-none' : 'bg-white text-primary rounded-tl-none'}`}>
+                       <p className="text-xs md:text-sm leading-relaxed">{content}</p>
+                    </div>
+                 </div>
+               );
+             })
+           )}
 
            {/* Waveform */}
            <div className="flex justify-center items-center gap-1 py-8 opacity-60">

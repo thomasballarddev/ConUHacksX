@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 interface AppointmentSchedulerProps {
   onClose?: () => void;
   onConfirm?: (details: { day: string; date: string; time: string }) => void;
+  availableSlots?: { day: string; date: string; time: string }[];
 }
 
-const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm }) => {
+const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm, availableSlots = [] }) => {
   const [selectedDay, setSelectedDay] = useState('Tue');
   const [selectedTime, setSelectedTime] = useState('08:00 AM');
 
@@ -19,14 +20,23 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
     { day: 'SUN', date: '18' },
   ];
 
-  const slots: Record<string, string[]> = {
-    'MON': ['09:00 AM', '10:30 AM'],
-    'TUE': ['08:00 AM', '11:00 AM'],
-    'WED': ['02:00 PM', '04:30 PM'],
-    'FRI': ['09:15 AM', '03:00 PM'],
-    'SAT': ['10:00 AM'],
-    'SUN': ['11:30 AM'],
-  };
+  // Transform availableSlots to slots map
+  const slots: Record<string, string[]> = {};
+  
+  if (availableSlots.length > 0) {
+      availableSlots.forEach(slot => {
+          if (!slots[slot.day]) slots[slot.day] = [];
+          if (!slots[slot.day].includes(slot.time)) slots[slot.day].push(slot.time);
+      });
+  } else {
+      // Default / Fallback
+      slots['MON'] = ['09:00 AM', '10:30 AM'];
+      slots['TUE'] = ['08:00 AM', '11:00 AM'];
+      slots['WED'] = ['02:00 PM', '04:30 PM'];
+      slots['FRI'] = ['09:15 AM', '03:00 PM'];
+      slots['SAT'] = ['10:00 AM'];
+      slots['SUN'] = ['11:30 AM'];
+  }
 
   const handleConfirm = () => {
     const dayObj = days.find(d => d.day === selectedDay);

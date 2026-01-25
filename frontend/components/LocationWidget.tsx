@@ -6,12 +6,13 @@ import { useLocation } from '../contexts/LocationContext';
 interface LocationWidgetProps {
   onClose?: () => void;
   onSelect?: () => void;
+  clinics?: any[]; // Using any for hackathon speed, strictly should be Clinic interface
 }
 
-const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) => {
+const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect, clinics = [] }) => {
   const { userLocation } = useLocation();
   const mapRef = useRef<MapRef>(null);
-  
+
   // Default to San Francisco if no user location
   const mapCenter = userLocation || { longitude: -122.41669, latitude: 37.7853 };
 
@@ -22,6 +23,12 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
     }
   }, []);
 
+  // Fallback if empty
+  const displayClinics = clinics.length > 0 ? clinics : [
+     { name: 'City Health Center', dist: '0.8 miles', rate: '4.8', tags: ['GP', 'Urgent Care'] },
+     { name: 'Prime Care Medical', dist: '1.2 miles', rate: '4.5', tags: ['Diagnostics'] },
+     { name: 'St. Mary Diagnostics', dist: '2.4 miles', rate: '4.9', tags: ['Cardiology'] }
+  ];
   return (
     <div className="h-full bg-soft-cream flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 w-full">
       <div className="p-6 border-b border-black/5 flex justify-between items-center bg-white/50 backdrop-blur-sm flex-shrink-0">
@@ -73,13 +80,8 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
           </Map>
         </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-6">
-           {[
-             { name: 'City Health Center', dist: '0.8 miles', rate: '4.8', tags: ['GP', 'Urgent Care'] },
-             { name: 'Prime Care Medical', dist: '1.2 miles', rate: '4.5', tags: ['Diagnostics'] },
-             { name: 'St. Mary Diagnostics', dist: '2.4 miles', rate: '4.9', tags: ['Cardiology'] }
-           ].map(clinic => (
+       <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-6">
+           {displayClinics.map(clinic => (
              <div key={clinic.name} className="bg-white p-6 rounded-[32px] border border-black/5 hover:border-primary transition-all group cursor-pointer shadow-sm hover:shadow-md">
                <div className="flex justify-between items-start mb-3">
                  <h3 className="font-black text-xl text-primary leading-tight">{clinic.name}</h3>
