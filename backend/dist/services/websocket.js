@@ -45,9 +45,10 @@ export function emitCallResumed(callId) {
         io.emit('call_resumed', callId);
     }
 }
-export function emitTranscriptUpdate(callId, line) {
+export function emitTranscriptUpdate(callId, message, sender) {
     if (io) {
-        io.emit('call_transcript_update', callId, line);
+        // Emit with sender information for clean display on frontend
+        io.emit('call_transcript_update', callId, { message, sender: sender || 'unknown' });
     }
 }
 export function emitEmergencyTrigger() {
@@ -64,5 +65,17 @@ export function emitChatResponse(message) {
 export function emitError(message) {
     if (io) {
         io.emit('error', message);
+    }
+}
+export function emitAgentNeedsInput(data) {
+    if (io) {
+        console.log('[WebSocket] Emitting agent_needs_input');
+        io.emit('agent_needs_input', data);
+    }
+}
+export function emitAgentInputReceived() {
+    if (io) {
+        console.log('[WebSocket] Emitting agent_input_received');
+        io.emit('agent_input_received');
     }
 }

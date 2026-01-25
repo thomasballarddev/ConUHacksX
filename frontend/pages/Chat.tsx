@@ -26,14 +26,19 @@ interface ServerToClientEvents {
   call_started: (callId: string) => void;
   call_on_hold: (callId: string) => void;
   call_resumed: (callId: string) => void;
-  call_ended: (callId: string, transcript: string[]) => void;
-  call_transcript_update: (callId: string, line: string) => void;
+  call_ended: (callId: string, transcript: TranscriptMessage[]) => void;
+  call_transcript_update: (callId: string, data: { message: string; sender: string }) => void;
   emergency_trigger: () => void;
   chat_response: (message: { role: 'user' | 'assistant', content: string }) => void;
   error: (message: string) => void;
   // Agent input request events
   agent_needs_input: (data: { callId: string; question: string; context?: string }) => void;
   agent_input_received: (data: { callId: string }) => void;
+}
+
+interface TranscriptMessage {
+  message: string;
+  sender: 'bot' | 'receptionist' | 'unknown';
 }
 
 interface ClientToServerEvents {
@@ -207,7 +212,7 @@ const Chat: React.FC = () => {
   const [clinics, setClinics] = useState<any[]>([]);
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [showEmergency, setShowEmergency] = useState(false);
-  const [transcript, setTranscript] = useState<string[]>([]);
+  const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
 
   // Agent input request state (when agent needs info from user during call)
   const [agentNeedsInput, setAgentNeedsInput] = useState(false);
@@ -244,8 +249,9 @@ const Chat: React.FC = () => {
       setShowEmergency(true); // Re-open or just ensure state
     });
 
-    socket.on('call_transcript_update', (callId, line) => {
-      setTranscript(prev => [...prev, line]);
+    socket.on('call_transcript_update', (callId, data) => {
+      console.log('[Frontend] Received transcript update:', data);
+      setTranscript(prev => [...prev, data]);
     });
 
     socket.on('chat_response', (msg: { role: string, content: string, audio?: string }) => {
@@ -435,7 +441,7 @@ const Chat: React.FC = () => {
     setAgentContext('');
 
     // Add the response to the transcript for visibility
-    setTranscript(prev => [...prev, `User: ${response}`]);
+    setTranscript(prev => [...prev, { message: response, sender: 'bot' }]);
 
     try {
       await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/respond`, {

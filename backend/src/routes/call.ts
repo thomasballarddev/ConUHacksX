@@ -4,8 +4,20 @@ import { initiateClinicCall, sendResponseToCall, getActiveCallStatus } from '../
 import { getPatientSymptoms } from '../services/gemini.js';
 import { getUserProfile, formatProfileForAgent } from '../services/firestore.js';
 import { TimeSlot } from '../types/index.js';
+import { stopTranscriptPolling } from '../services/transcript-poller.js';
 
 const router = Router();
+
+// Log ALL incoming requests for debugging
+router.use((req, res, next) => {
+  console.log('[Call Routes] ===== INCOMING REQUEST =====');
+  console.log('[Call Routes] Method:', req.method);
+  console.log('[Call Routes] Path:', req.path);
+  console.log('[Call Routes] Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('[Call Routes] Body:', JSON.stringify(req.body, null, 2));
+  console.log('[Call Routes] ===== END REQUEST LOG =====');
+  next();
+});
 
 // Store for pending webhook responses (waiting for user calendar selection)
 interface PendingWebhook {
@@ -194,6 +206,22 @@ router.post('/ask-user', async (req, res) => {
   });
 });
 
+/**
+ * NEW WEBHOOK: Agent sends transcript updates
+ * This is a workaround since ElevenLabs doesn't send real-time transcript events for Twilio calls
+ */
+router.post('/send-transcript', (req, res) => {
+  const { speaker, text } = req.body;
+  console.log('[Call Webhook] Transcript update - Speaker:', speaker, '- Text:', text);
+
+  // Emit transcript to frontend
+  if (speaker && text) {
+    emitTranscriptUpdate('current-call-id', `${speaker}: ${text}`);
+  }
+
+  res.json({ success: true, received: true });
+});
+
 // Helper function to parse slots from various formats
 function parseSlots(slots: any): TimeSlot[] {
   if (!slots || !Array.isArray(slots)) {
@@ -253,42 +281,65 @@ router.post('/emergency', (req, res) => {
 
 /**
  * WEBHOOK: Receive real-time transcript events from ElevenLabs
- * ElevenLabs sends events for agent responses and user (receptionist) transcripts
+ * Custom format: { message: string, sender: "bot" | "receptionist" }
  */
 router.post('/transcript-webhook', (req, res) => {
-  const { type, agent_response_event, user_transcription_event } = req.body;
+  console.log('[Transcript Webhook] ===== NEW EVENT =====');
+  console.log('[Transcript Webhook] Full payload:', JSON.stringify(req.body, null, 2));
 
-  console.log('[Transcript Webhook] Received event:', type);
+  const { message, sender } = req.body;
 
-  // Handle agent (AI) speaking
-  if (type === 'agent_response' && agent_response_event?.agent_response) {
-    const agentText = agent_response_event.agent_response;
-    console.log('[Transcript Webhook] Agent said:', agentText);
-    emitTranscriptUpdate('current-call-id', `Agent: ${agentText}`);
+  // Handle custom format with message and sender fields
+  if (message && sender) {
+    const speakerLabel = sender === 'bot' ? 'Agent' : 'Receptionist';
+    console.log('[Transcript Webhook]', speakerLabel, 'said:', message);
+
+    // Emit with sender information for clean display on frontend
+    emitTranscriptUpdate('current-call-id', message, sender);
+  } else {
+    console.log('[Transcript Webhook] Unknown format - message or sender missing');
   }
 
-  // Handle user (receptionist) speaking - ElevenLabs may use different event names
-  if (type === 'user_transcript' && user_transcription_event?.user_transcript) {
-    const userText = user_transcription_event.user_transcript;
-    console.log('[Transcript Webhook] Receptionist said:', userText);
-    emitTranscriptUpdate('current-call-id', `Receptionist: ${userText}`);
-  }
-
-  // Also handle alternative event format (transcript_event)
-  const transcriptEvent = req.body.transcript_event || req.body.user_transcript_event;
-  if (type === 'user_transcript' && transcriptEvent?.user_transcript) {
-    const userText = transcriptEvent.user_transcript;
-    console.log('[Transcript Webhook] Receptionist said:', userText);
-    emitTranscriptUpdate('current-call-id', `Receptionist: ${userText}`);
-  }
-
+  console.log('[Transcript Webhook] ===== END EVENT =====');
   res.json({ received: true });
 });
 
 // POST /call/webhook - Generic ElevenLabs webhook for call events
 router.post('/webhook', async (req, res) => {
-  console.log('[Call Webhook] Received:', req.body);
+  console.log('[Call Webhook] ===== GENERIC WEBHOOK CALLED =====');
+  console.log('[Call Webhook] Event type:', req.body.type);
+  console.log('[Call Webhook] Full payload:', JSON.stringify(req.body, null, 2));
+
+  // Check if this is a transcript event coming to the wrong endpoint
+  const { type, agent_response_event, user_transcription_event } = req.body;
+
+  if (type === 'agent_response' && agent_response_event?.agent_response) {
+    const agentText = agent_response_event.agent_response;
+    console.log('[Call Webhook] AGENT TRANSCRIPT:', agentText);
+    emitTranscriptUpdate('current-call-id', `Agent: ${agentText}`);
+  }
+
+  if (type === 'user_transcript' && user_transcription_event?.user_transcript) {
+    const userText = user_transcription_event.user_transcript;
+    console.log('[Call Webhook] USER TRANSCRIPT:', userText);
+    emitTranscriptUpdate('current-call-id', `Receptionist: ${userText}`);
+  }
+
+  // Handle call ended events
+  if (type === 'conversation.ended' || type === 'call.ended' || req.body.status === 'ended') {
+    console.log('[Call Webhook] Call ended, stopping transcript polling');
+    stopTranscriptPolling();
+  }
+
+  console.log('[Call Webhook] ===== END GENERIC WEBHOOK =====');
   res.json({ received: true });
+});
+
+// POST /call/end - Manually end a call
+router.post('/end', (req, res) => {
+  console.log('[Call] Manually ending call and stopping transcript polling');
+  stopTranscriptPolling();
+  res.json({ success: true });
 });
 
 export default router;

@@ -33,10 +33,15 @@ import React, { useEffect, useRef, useState } from 'react';
  *       say 'One moment, let me verify that with the patient' and use the request_user_input tool"
  */
 
+interface TranscriptMessage {
+  message: string;
+  sender: 'bot' | 'receptionist' | 'unknown';
+}
+
 interface LiveCallPanelProps {
   onClose?: () => void;
   minimized?: boolean;
-  transcript?: string[];
+  transcript?: TranscriptMessage[];
   // Agent input request props
   agentNeedsInput?: boolean;
   agentQuestion?: string;
@@ -74,17 +79,8 @@ const LiveCallPanel: React.FC<LiveCallPanelProps> = ({
     setTimeout(() => setIsSubmitting(false), 1000);
   };
 
-  const getMessageRole = (line: string): 'ai' | 'other' => {
-    const lower = line.toLowerCase();
-    if (lower.startsWith('assistant:') || lower.startsWith('ai:') || lower.startsWith('me:') || lower.startsWith('health.me:') || lower.startsWith('agent:')) {
-      return 'ai';
-    }
-    return 'other';
-  };
-
-  const cleanMessage = (line: string) => {
-    // Remove the "Role: " prefix if present
-    return line.replace(/^(assistant|ai|me|health\.me|receptionist|clinic|user|agent):\s*/i, '');
+  const getMessageRole = (sender: string): 'ai' | 'other' => {
+    return sender === 'bot' ? 'ai' : 'other';
   };
 
   return (
@@ -101,9 +97,8 @@ const LiveCallPanel: React.FC<LiveCallPanelProps> = ({
                 <p className="text-sm font-medium">Waiting for conversation...</p>
               </div>
             ) : (
-              transcript.map((line, index) => {
-                const role = getMessageRole(line);
-                const text = cleanMessage(line);
+              transcript.map((msg, index) => {
+                const role = getMessageRole(msg.sender);
 
                 if (role === 'ai') {
                   return (
@@ -112,7 +107,10 @@ const LiveCallPanel: React.FC<LiveCallPanelProps> = ({
                         <span className="material-symbols-outlined text-white text-sm fill-1">smart_toy</span>
                       </div>
                       <div className="bg-green-600 p-4 rounded-2xl rounded-tr-none shadow-xl text-white max-w-[85%]">
-                        <p className="text-xs md:text-sm leading-relaxed">{text}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">AI Assistant</span>
+                        </div>
+                        <p className="text-xs md:text-sm leading-relaxed">{msg.message}</p>
                       </div>
                     </div>
                   );
@@ -123,7 +121,10 @@ const LiveCallPanel: React.FC<LiveCallPanelProps> = ({
                          <span className="material-symbols-outlined text-gray-500 text-sm">support_agent</span>
                       </div>
                       <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-black/5 max-w-[85%]">
-                        <p className="text-xs md:text-sm text-primary leading-relaxed">{text}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Receptionist</span>
+                        </div>
+                        <p className="text-xs md:text-sm text-primary leading-relaxed">{msg.message}</p>
                       </div>
                     </div>
                   );

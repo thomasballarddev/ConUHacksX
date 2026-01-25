@@ -1,5 +1,270 @@
 {
-  "currentChatId": null,
-  "chats": {},
+  "currentChatId": "chat_1769349908631",
+  "chats": {
+    "chat_1769346482001": {
+      "id": "chat_1769346482001",
+      "messages": [
+        {
+          "role": "user",
+          "content": "big headache for 2 days",
+          "timestamp": "2026-01-25T13:08:02.002Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I have displayed a list of nearby clinics. Would you like to book an appointment with any of them?\n",
+          "timestamp": "2026-01-25T13:08:03.700Z"
+        },
+        {
+          "role": "user",
+          "content": "try again",
+          "timestamp": "2026-01-25T13:12:33.197Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry, can you please clarify what you'd like me to try again?",
+          "timestamp": "2026-01-25T13:12:34.160Z"
+        },
+        {
+          "role": "user",
+          "content": "big headache for 2 days",
+          "timestamp": "2026-01-25T13:12:43.903Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry you're experiencing a headache. To help you find the right care, I can show you a list of nearby clinics. Would you like me to do that?\n",
+          "timestamp": "2026-01-25T13:12:44.777Z"
+        },
+        {
+          "role": "user",
+          "content": "yes",
+          "timestamp": "2026-01-25T13:12:47.517Z"
+        },
+        {
+          "role": "assistant",
+          "content": "OK. I've displayed a list of nearby clinics for you. They are: City Health Center, Prime Care Medical, and St. Mary Diagnostics. Do any of those sound good to you?\n",
+          "timestamp": "2026-01-25T13:12:48.965Z"
+        },
+        {
+          "role": "user",
+          "content": "hello",
+          "timestamp": "2026-01-25T13:20:56.437Z"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello! How can I help you today?\n",
+          "timestamp": "2026-01-25T13:20:57.134Z"
+        },
+        {
+          "role": "user",
+          "content": "hello",
+          "timestamp": "2026-01-25T13:21:05.282Z"
+        },
+        {
+          "role": "assistant",
+          "content": "Hi there! How can I assist you with your health today?\n",
+          "timestamp": "2026-01-25T13:21:05.957Z"
+        },
+        {
+          "role": "user",
+          "content": "hello",
+          "timestamp": "2026-01-25T13:21:16.081Z"
+        },
+        {
+          "role": "assistant",
+          "content": "Hi! How can I help you with your health today? Are you experiencing any symptoms, looking for a clinic, or do you have any health-related questions?\n",
+          "timestamp": "2026-01-25T13:21:16.985Z"
+        },
+        {
+          "role": "user",
+          "content": "i have back pain",
+          "timestamp": "2026-01-25T13:21:36.445Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry to hear that you're experiencing back pain. To help you find the best option, could you describe your symptoms in a bit more detail? For example, where exactly is the pain, how severe is it, and what makes it better or worse?\n\nIn the meantime, if you're looking for a clinic, I can show you some nearby options.\n",
+          "timestamp": "2026-01-25T13:21:37.625Z"
+        },
+        {
+          "role": "user",
+          "content": "i've had it for 2 weeks, find a clinic",
+          "timestamp": "2026-01-25T13:21:49.610Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I've found three nearby clinics: City Health Center, Prime Care Medical, and St. Mary Diagnostics. Do any of those sound good to you?\n",
+          "timestamp": "2026-01-25T13:21:51.089Z"
+        },
+        {
+          "role": "user",
+          "content": "Hello I have mild stomach ache please suggest appointments",
+          "timestamp": "2026-01-25T13:32:17.146Z"
+        },
+        {
+          "role": "assistant",
+          "content": "OK. I can help you find a clinic. Here are some nearby clinics:\n1. City Health Center\n2. Prime Care Medical\n3. St. Mary Diagnostics\n\nWhich clinic would you like to book an appointment with?",
+          "timestamp": "2026-01-25T13:32:18.589Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:08:02.001Z"
+    },
+    "chat_1769348305062": {
+      "id": "chat_1769348305062",
+      "messages": [
+        {
+          "role": "user",
+          "content": "ok I have a mild stomach ache, please setup an apt",
+          "timestamp": "2026-01-25T13:38:25.062Z"
+        },
+        {
+          "role": "assistant",
+          "content": "Okay, I've found three clinics near you: City Health Center, Prime Care Medical, and St. Mary Diagnostics. Which one would you prefer to book an appointment with?",
+          "timestamp": "2026-01-25T13:38:26.651Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:38:25.062Z"
+    },
+    "chat_1769348531229": {
+      "id": "chat_1769348531229",
+      "messages": [
+        {
+          "role": "user",
+          "content": "what happens if I goon 20 times a day",
+          "timestamp": "2026-01-25T13:42:11.230Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I am not qualified to answer that question. Please consult with a healthcare professional.\n",
+          "timestamp": "2026-01-25T13:42:11.867Z"
+        },
+        {
+          "role": "user",
+          "content": "my arm hurts :(",
+          "timestamp": "2026-01-25T13:42:37.286Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry to hear that your arm hurts. To help you find the best care, could you describe the pain a little more? For example:\n\n*   Where in your arm does it hurt? (e.g., shoulder, elbow, wrist)\n*   What does the pain feel like? (e.g., sharp, dull, aching)\n*   Did anything specific cause the pain, or did it come on gradually?\n\nIn the meantime, I can show you some nearby clinics.\n",
+          "timestamp": "2026-01-25T13:42:38.537Z"
+        },
+        {
+          "role": "user",
+          "content": "around my shoulder i need a clinical visit",
+          "timestamp": "2026-01-25T13:42:52.175Z"
+        },
+        {
+          "role": "assistant",
+          "content": "Okay, I've found three nearby clinics:\n\n1.  City Health Center\n2.  Prime Care Medical\n3.  St. Mary Diagnostics\n\nDo any of those look good to you?\n",
+          "timestamp": "2026-01-25T13:42:53.497Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:42:11.229Z"
+    },
+    "chat_1769348723325": {
+      "id": "chat_1769348723325",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have a mild headache please show me a clinic",
+          "timestamp": "2026-01-25T13:45:23.326Z"
+        },
+        {
+          "role": "assistant",
+          "content": "OK. I've displayed a list of nearby clinics for you. Did any of those clinics look good to you?\n",
+          "timestamp": "2026-01-25T13:45:24.807Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:45:23.325Z"
+    },
+    "chat_1769348829232": {
+      "id": "chat_1769348829232",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Theres a hole in my stomach and ants crawling through my skin :(",
+          "timestamp": "2026-01-25T13:47:09.233Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I have initiated emergency services. They will be calling 438 520 2457 in 7 seconds. Please stay on the line and tell me exactly what you are experiencing. I will stay with you.\n",
+          "timestamp": "2026-01-25T13:47:10.726Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:47:09.232Z"
+    },
+    "chat_1769348913221": {
+      "id": "chat_1769348913221",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have a mild stomach she please show me some clinics",
+          "timestamp": "2026-01-25T13:48:33.222Z"
+        },
+        {
+          "role": "assistant",
+          "content": "OK. I have a list of nearby clinics that can help with your stomach ache:\n1. City Health Center\n2. Prime Care Medical\n3. St. Mary Diagnostics\n\nDo any of those sound good to you?\n",
+          "timestamp": "2026-01-25T13:48:34.657Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:48:33.221Z"
+    },
+    "chat_1769349071498": {
+      "id": "chat_1769349071498",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have a stomach ache can you show me the clinics",
+          "timestamp": "2026-01-25T13:51:11.499Z"
+        },
+        {
+          "role": "assistant",
+          "content": "OK. I have listed the nearby clinics for you. They are: City Health Center, Prime Care Medical, and St. Mary Diagnostics.\n",
+          "timestamp": "2026-01-25T13:51:12.937Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:51:11.498Z"
+    },
+    "chat_1769349139957": {
+      "id": "chat_1769349139957",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have a stomach ache please show me the list of clincis",
+          "timestamp": "2026-01-25T13:52:19.958Z"
+        },
+        {
+          "role": "assistant",
+          "content": "OK. I have displayed a list of nearby clinics to you. Would you like me to help you book an appointment with any of them?\n",
+          "timestamp": "2026-01-25T13:52:21.433Z"
+        }
+      ],
+      "createdAt": "2026-01-25T13:52:19.957Z"
+    },
+    "chat_1769349908631": {
+      "id": "chat_1769349908631",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I ahve a stomach she show me some clincis",
+          "timestamp": "2026-01-25T14:05:08.633Z"
+        },
+        {
+          "role": "assistant",
+          "content": "I can help with that. To find the most relevant clinics, can you describe your stomach issues in more detail?\n",
+          "timestamp": "2026-01-25T14:05:09.435Z"
+        },
+        {
+          "role": "user",
+          "content": "I have a decent amoutnof pair and throbbing show clinics",
+          "timestamp": "2026-01-25T14:05:19.747Z"
+        },
+        {
+          "role": "assistant",
+          "content": "OK. I've found three clinics near you: City Health Center, Prime Care Medical, and St. Mary Diagnostics. Do any of those sound good to you?\n",
+          "timestamp": "2026-01-25T14:05:21.036Z"
+        }
+      ],
+      "createdAt": "2026-01-25T14:05:08.631Z"
+    }
+  },
   "userProfile": null
 }

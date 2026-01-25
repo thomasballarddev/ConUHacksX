@@ -5,10 +5,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import chatRoutes from './routes/chat.js';
 // import clinicRoutes from './routes/clinics.js'; // Replaced by MCP
-// import callRoutes from './routes/call.js'; // Replaced by MCP
+import callRoutes from './routes/call.js';
+import profileRoutes from './routes/profile.js';
 import { initializeWebSocket } from './services/websocket.js';
 import { setupMcpRoutes } from './mcp.js';
-dotenv.config();
+dotenv.config({ path: '../.env' });
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -25,7 +26,8 @@ initializeWebSocket(io);
 // Routes
 app.use('/chat', chatRoutes);
 // app.use('/clinics', clinicRoutes);
-// app.use('/call', callRoutes);
+app.use('/call', callRoutes);
+app.use('/profile', profileRoutes);
 // Setup MCP over SSE
 setupMcpRoutes(app);
 // Health check

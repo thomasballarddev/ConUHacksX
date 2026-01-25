@@ -1,46 +1,129 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import WebSocket from 'ws';
+dotenv.config({ path: '../.env' });
 const API_KEY = process.env.ELEVENLABS_API_KEY;
 const AGENT_ID = process.env.ELEVENLABS_AGENT_ID;
 if (!API_KEY) {
     console.warn('[ElevenLabs] Missing ELEVENLABS_API_KEY');
 }
 export async function sendChatMessage(message, conversationId) {
-    // Note: ElevenLabs Conversational AI is typically WebSocket-based for real-time audio.
-    // For text-only chat that triggers an agent, we might be using their REST API if available 
-    // or this function might be a placeholder if we are using the SDK in the frontend.
-    // However, the user wants the backend to handle it.
-    // As of early 2025, ElevenLabs Conversational AI primarily uses WebSockets. 
-    // We will assume we are proxying text or just returning a mock response if the API isn't fully public for text-in-text-out 
-    // via REST yet, OR we use their signed URL method to let the frontend connect directly.
-    // BUT, the requirement is "Backend forwards to ElevenLabs agent".
-    // Let's assume there is a REST endpoint for interacting with the agent or we use the SDK server-side.
-    // For now, let's implement a signed URL generator so the Frontend can connect to the Agent via WebSocket securely,
-    // OR if we strictly must proxy text, we might need a custom implementation.
-    // Given the "Chat.tsx" uses text, and the Agent is audio-first... 
-    // actually, the user said "No gemini, we will move to elevenlabs for everything".
-    // ElevenLabs Agents can handle text input.
-    // Let's try to hit the ElevenLabs API to get a signed URL for the conversation.
-    try {
-        const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`, {
-            method: 'GET',
-            headers: {
-                'xi-api-key': API_KEY || ''
-            }
-        });
-        if (!response.ok) {
-            throw new Error(`ElevenLabs API error: ${response.statusText}`);
+    const signedUrlResponse = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`, {
+        method: 'GET',
+        headers: {
+            'xi-api-key': API_KEY || ''
         }
-        const data = await response.json();
-        return {
-            conversation_id: data.signed_url, // For signed URL flow
-            message: 'Signed URL generated'
+    });
+    if (!signedUrlResponse.ok) {
+        throw new Error(`ElevenLabs API error: ${signedUrlResponse.statusText}`);
+    }
+    const { conversation_id } = await signedUrlResponse.json();
+    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${AGENT_ID}&conversation_id=${conversation_id}`;
+    return new Promise((resolve, reject) => {
+        const ws = new WebSocket(wsUrl);
+        let agentText = "";
+        let resolved = false;
+        let userMessageSent = false;
+        let greetingReceived = false;
+        let responseCount = 0;
+        const resolveOnce = (response) => {
+            if (!resolved) {
+                resolved = true;
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+                resolve(response);
+            }
         };
-    }
-    catch (error) {
-        console.error('[ElevenLabs] Error getting signed URL:', error);
-        throw error;
-    }
+        const sendUserMessage = () => {
+            if (!userMessageSent) {
+                userMessageSent = true;
+                agentText = ""; // Clear the greeting text
+                const payload = {
+                    type: 'user_message',
+                    user_message: {
+                        text: message
+                    }
+                };
+                console.log('[ElevenLabs] Sending user message:', message);
+                ws.send(JSON.stringify(payload));
+            }
+        };
+        ws.onopen = () => {
+            console.log('[ElevenLabs] Connected to Agent WS');
+            // Don't send immediately - wait for greeting to complete
+        };
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data.toString());
+                console.log('[ElevenLabs] WS Message:', data.type, JSON.stringify(data).substring(0, 200));
+                if (data.type === 'ping') {
+                    ws.send(JSON.stringify({ type: 'pong', event_id: data.ping_event?.event_id }));
+                }
+                if (data.type === 'agent_response') {
+                    responseCount++;
+                    const evt = data.agent_response_event || data;
+                    const text = evt.agent_response || evt.response || evt.text || data.text || "";
+                    if (text && typeof text === 'string' && text.length > 0) {
+                        if (userMessageSent) {
+                            // This is the response to our message
+                            agentText += text;
+                        }
+                        else {
+                            // This is the initial greeting - mark it received
+                            greetingReceived = true;
+                            console.log('[ElevenLabs] Greeting received:', text);
+                        }
+                    }
+                }
+                if (data.type === 'agent_response_correction' && userMessageSent) {
+                    const correctedText = data.agent_response_correction_event?.corrected_response || data.corrected_response || "";
+                    if (correctedText) {
+                        agentText = correctedText;
+                    }
+                }
+                // When greeting audio ends, send our message
+                if (data.type === 'audio' && data.audio_event?.end_of_stream) {
+                    if (!userMessageSent && greetingReceived) {
+                        console.log('[ElevenLabs] Greeting audio finished, sending user message');
+                        sendUserMessage();
+                    }
+                    else if (userMessageSent && agentText) {
+                        // Response to our message is complete
+                        resolveOnce({ conversation_id, message: agentText });
+                    }
+                }
+            }
+            catch (e) {
+                console.error('Error parsing WS message', e);
+            }
+        };
+        // Fallback: if no audio end_of_stream, send message after delay
+        setTimeout(() => {
+            if (!userMessageSent) {
+                console.log('[ElevenLabs] Timeout - sending user message anyway');
+                sendUserMessage();
+            }
+        }, 3000);
+        // Final timeout
+        setTimeout(() => {
+            resolveOnce({
+                conversation_id,
+                message: agentText || "Agent processing... (no response received)"
+            });
+        }, 15000);
+        ws.onerror = (error) => {
+            console.error('[ElevenLabs] WS Error:', error);
+            if (!resolved) {
+                reject(error);
+            }
+        };
+        ws.onclose = () => {
+            console.log('[ElevenLabs] WS Closed');
+            if (!resolved && agentText && userMessageSent) {
+                resolveOnce({ conversation_id, message: agentText });
+            }
+        };
+    });
 }
 // Triggers a call to the user or clinic (if supported by API)
 // For this hackathon, we might rely on the Agent being triggered manually or via a specific "start call" endpoint

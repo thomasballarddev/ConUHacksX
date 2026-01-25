@@ -37,6 +37,11 @@ export interface CallState {
   endedAt?: string;
 }
 
+export interface TranscriptMessage {
+  message: string;
+  sender: string;
+}
+
 // WebSocket event types
 export interface ServerToClientEvents {
   show_clinics: (clinics: Clinic[]) => void;
@@ -44,8 +49,8 @@ export interface ServerToClientEvents {
   call_started: (callId: string) => void;
   call_on_hold: (callId: string) => void;
   call_resumed: (callId: string) => void;
-  call_ended: (callId: string, transcript: string[]) => void;
-  call_transcript_update: (callId: string, line: string) => void;
+  call_ended: (callId: string, transcript: TranscriptMessage[]) => void;
+  call_transcript_update: (callId: string, data: TranscriptMessage) => void;
   emergency_trigger: () => void;
   chat_response: (message: ChatMessage) => void;
   error: (message: string) => void;

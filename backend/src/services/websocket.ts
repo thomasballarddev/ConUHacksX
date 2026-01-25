@@ -1,5 +1,5 @@
 import { Server as SocketServer, Socket } from 'socket.io';
-import type { ServerToClientEvents, ClientToServerEvents, Clinic, TimeSlot, ChatMessage } from '../types/index.js';
+import type { ServerToClientEvents, ClientToServerEvents, Clinic, TimeSlot, ChatMessage, TranscriptMessage } from '../types/index.js';
 
 let io: SocketServer<ClientToServerEvents, ServerToClientEvents> | null = null;
 
@@ -44,7 +44,7 @@ export function emitCallOnHold(callId: string) {
   }
 }
 
-export function emitCallEnded(callId: string, transcript: string[]) {
+export function emitCallEnded(callId: string, transcript: TranscriptMessage[]) {
   if (io) {
     console.log(`[WebSocket] Emitting call_ended: ${callId}`);
     io.emit('call_ended', callId, transcript);
@@ -58,9 +58,10 @@ export function emitCallResumed(callId: string) {
   }
 }
 
-export function emitTranscriptUpdate(callId: string, line: string) {
+export function emitTranscriptUpdate(callId: string, message: string, sender?: string) {
   if (io) {
-    io.emit('call_transcript_update', callId, line);
+    // Emit with sender information for clean display on frontend
+    io.emit('call_transcript_update', callId, { message, sender: sender || 'unknown' });
   }
 }
 

@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { emitShowCalendar, emitCallStarted, emitCallEnded, emitTranscriptUpdate, emitCallOnHold } from './websocket.js';
 import { TimeSlot } from '../types/index.js';
+import { startTranscriptPolling, stopTranscriptPolling } from './transcript-poller.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -96,7 +97,7 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
     // Update call state
     if (activeCall) {
       activeCall.state = 'ended';
-      emitCallEnded(callId, [`Error: ${errorText}`]);
+      emitCallEnded(callId, [{ message: `Error: ${errorText}`, sender: 'unknown' }]);
     }
 
     throw new Error(`ElevenLabs outbound call error: ${outboundCallResponse.statusText} - ${errorText}`);
@@ -109,11 +110,16 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   if (activeCall) {
     activeCall.conversationId = callData.conversation_id || callData.call_sid || callId;
     activeCall.state = 'active';
+
+    // DISABLED: Polling not needed - webhooks are working!
+    // if (callData.conversation_id) {
+    //   console.log('[ElevenLabs-Call] Starting transcript polling for conversation:', callData.conversation_id);
+    //   startTranscriptPolling(callData.conversation_id);
+    // }
   }
 
-  // Note: To get real-time updates, you'd need to set up a webhook
-  // For now, the ElevenLabs agent handles the conversation autonomously
-  // When the agent uses the webhook tool, your /call/show-calendar endpoint will be hit
+  // Note: Transcript webhooks are configured in ElevenLabs dashboard
+  // They send events to /call/transcript-webhook
 
   return {
     callId,
