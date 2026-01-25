@@ -92,7 +92,13 @@ app.post('/chat', async (req: Request, res: Response) => {
 });
 
 // Setup MCP server routes
-setupMcpRoutes(app, { initiateCall: async () => ({}), activeCalls: new Map(), twilioClient: {}, getSignedUrl: async () => '' });
+setupMcpRoutes(app, {
+  initiateCall: async () => ({}),
+  activeCalls: new Map(),
+  twilioClient: {},
+  getSignedUrl: async () => '',
+  sendChatMessage
+});
 console.log('[Backend] MCP server routes initialized');
 
 // Start server

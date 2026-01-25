@@ -7,12 +7,48 @@ let initiateCall;
 let activeCalls;
 let twilioClient;
 let getSignedUrl;
+let sendChatMessage;
 // Initialize MCP Server
 export const mcpServer = new McpServer({
     name: "Health.me Backend",
     version: "1.0.0"
 });
-// Tool: Initiate Call
+// Tool: Make Call (ElevenLabs native)
+mcpServer.tool("make_call", "Initiate an outbound phone call with a message", {
+    phone_number: z.string().describe("The phone number to call (with country code, e.g., +1 555 123 4567)"),
+    message: z.string().describe("The message to convey during the call"),
+    recipient_name: z.string().optional().describe("Name of the person being called")
+}, async (params) => {
+    console.log("[MCP] Tool called: make_call", params);
+    try {
+        // Use ElevenLabs to initiate the call
+        // The agent will conduct the conversation naturally
+        const callMessage = `Please call ${params.recipient_name || 'the recipient'} at ${params.phone_number} and say: "${params.message}"`;
+        const response = await sendChatMessage(callMessage);
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Call initiated. ${response.message || 'Call is being processed.'}`
+                }
+            ]
+        };
+    }
+    catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error("[MCP] Tool error: make_call", error);
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Failed to initiate call: ${errorMsg}`
+                }
+            ],
+            isError: true
+        };
+    }
+});
+// Tool: Initiate Call (Legacy - Twilio based)
 mcpServer.tool("initiate_call", "Initiate an outbound phone call with a message", {
     phoneNumber: z.string().describe("The phone number to call (with country code)"),
     message: z.string().describe("The message or purpose of the call"),
@@ -306,10 +342,13 @@ Always be helpful, empathetic, and provide accurate health information.`
 // Express Middleware for SSE
 export function setupMcpRoutes(app, deps) {
     // Set the dependencies
-    initiateCall = deps.initiateCall;
-    activeCalls = deps.activeCalls;
-    twilioClient = deps.twilioClient;
-    getSignedUrl = deps.getSignedUrl;
+    if (deps) {
+        initiateCall = deps.initiateCall || initiateCall;
+        activeCalls = deps.activeCalls || activeCalls;
+        twilioClient = deps.twilioClient || twilioClient;
+        getSignedUrl = deps.getSignedUrl || getSignedUrl;
+        sendChatMessage = deps.sendChatMessage || sendChatMessage;
+    }
     const transports = new Map();
     app.get("/sse", async (req, res) => {
         console.log("[MCP] New SSE connection established");
