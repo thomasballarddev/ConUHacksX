@@ -4,33 +4,31 @@ import { emitChatResponse } from '../services/websocket.js';
 
 const router = Router();
 
-// POST /chat - Initialize chat or send message
+// POST /chat - Send message to ElevenLabs agent
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { message } = req.body;
+    const { message, sessionId } = req.body;
     console.log('[Chat] Received message:', message);
 
-    // Get signed URL from ElevenLabs
-    const result = await sendChatMessage(message);
+    // Send to ElevenLabs agent and get response
+    const result = await sendChatMessage(message, sessionId || 'default');
 
-    // Emit response via WebSocket so frontend receives it
-    emitChatResponse({
-      role: 'assistant',
-      content: result.message || 'Agent signed URL generated. Please connect to start the conversation.',
-      timestamp: new Date().toISOString()
-    });
-
+    // Response is already emitted via WebSocket in elevenlabs service
+    // Also return via REST for redundancy
     res.json({
-      ...result,
-      signedUrl: result.conversation_id // Return signed URL for frontend to connect to ElevenLabs
+      success: true,
+      message: result.message
     });
   } catch (error) {
     console.error('[Chat] Error:', error);
+
+    // Emit error response via WebSocket
     emitChatResponse({
       role: 'assistant',
       content: 'Sorry, I encountered an error processing your request. Please try again.',
       timestamp: new Date().toISOString()
     });
+
     res.status(500).json({ error: 'Failed to process chat request' });
   }
 });
