@@ -16,6 +16,7 @@ const {
   TWILIO_AUTH_TOKEN,
   TWILIO_PHONE_NUMBER,
   EMERGENCY_PHONE_NUMBER,
+  NGROK_HOST,
   PORT = 3001
 } = process.env;
 
@@ -217,7 +218,7 @@ app.post('/chat', async (req: Request, res: Response) => {
                 phoneNumber!,
                 `You are calling ${recipientName} on behalf of the user. Your message: ${callMessage}`,
                 `Hello! This is Health.me calling on behalf of your contact. ${callMessage}`,
-                req.headers.host || 'localhost:3001',
+                NGROK_HOST || req.headers.host || 'localhost:3001',
                 sessionId
               );
 
@@ -318,7 +319,7 @@ app.post('/call/start', async (req: Request, res: Response) => {
       targetNumber!,
       prompt || 'You are a helpful health assistant.',
       firstMessage || 'Hello! How can I help you today?',
-      req.headers.host || 'localhost:3001',
+      NGROK_HOST || req.headers.host || 'localhost:3001',
       sessionId
     );
 
@@ -345,7 +346,7 @@ app.post('/call/initiate', async (req: Request, res: Response) => {
       targetNumber,
       req.body.prompt || 'You are a helpful health assistant.',
       req.body.firstMessage || 'Hello! How can I help you today?',
-      req.headers.host || 'localhost:3001',
+      NGROK_HOST || req.headers.host || 'localhost:3001',
       sessionId
     );
 
