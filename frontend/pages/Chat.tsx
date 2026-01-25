@@ -1,60 +1,36 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import AppointmentScheduler from '../components/AppointmentScheduler';
+import LiveCallPanel from '../components/LiveCallPanel';
+import LocationWidget from '../components/LocationWidget';
+import { useNavigate } from 'react-router-dom';
 
 interface Message {
   role: 'user' | 'model';
   text: string;
 }
 
-import AppointmentScheduler from '../components/AppointmentScheduler';
-import LiveCallPanel from '../components/LiveCallPanel';
-import LocationWidget from '../components/LocationWidget';
+import EmergencyModal from '../components/EmergencyModal';
+import { io, Socket } from 'socket.io-client';
 
-// Speech Recognition type declarations
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
+// WebSocket event interface (matching backend)
+interface ServerToClientEvents {
+  show_clinics: (clinics: any[]) => void;
+  show_calendar: (slots: any[]) => void;
+  call_started: (callId: string) => void;
+  call_on_hold: (callId: string) => void;
+  call_resumed: (callId: string) => void;
+  call_ended: (callId: string, transcript: string[]) => void;
+  call_transcript_update: (callId: string, line: string) => void;
+  emergency_trigger: () => void;
+  chat_response: (message: { role: 'user' | 'assistant', content: string }) => void;
+  error: (message: string) => void;
 }
 
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
+interface ClientToServerEvents {
+  chat_message: (message: string) => void;
 }
 
-interface SpeechRecognitionResult {
-  isFinal: boolean;
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: Event) => void) | null;
-  onend: (() => void) | null;
-  onstart: (() => void) | null;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
-  }
-}
 
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -66,11 +42,6 @@ const Chat: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Voice input state
-  const [isListening, setIsListening] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(true);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
@@ -78,62 +49,64 @@ const Chat: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Initialize speech recognition check
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setSpeechSupported(false);
-    }
-  }, []);
-
-  const toggleListening = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-      setIsListening(false);
-    } else {
-      // Create fresh instance each time
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Single result mode
-      recognition.interimResults = false; // Only final result, not word-by-word
-      recognition.lang = 'en-US';
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event);
-        setIsListening(false);
-        recognitionRef.current = null;
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        recognitionRef.current = null;
-      };
-
-      recognitionRef.current = recognition;
-
-      try {
-        recognition.start();
-        setIsListening(true);
-      } catch (error) {
-        console.error('Failed to start speech recognition:', error);
-        recognitionRef.current = null;
-      }
-    }
-  };
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
+
+  // Socket Ref
+  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+
+  // Widget Data
+  const [clinics, setClinics] = useState<any[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [transcript, setTranscript] = useState<string[]>([]);
+
+  useEffect(() => {
+    // 1. Connect to Backend WebSocket
+    const socket = io(import.meta.env.VITE_BACKEND_URL); // Uses env var
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Connected to backend WS');
+    });
+
+    // 2. Listen for Events
+    socket.on('show_clinics', (data) => {
+      setClinics(data);
+      setActiveWidget('location');
+    });
+
+    socket.on('show_calendar', (slots) => {
+      setAvailableSlots(slots);
+      setActiveWidget('schedule');
+    });
+
+    socket.on('call_started', () => {
+      setIsCallActive(true);
+      // Keep widget if open, or minimized
+    });
+
+    socket.on('emergency_trigger', () => {
+      setShowEmergency(false); // Close modal if open
+      setShowEmergency(true); // Re-open or just ensure state
+    });
+
+    socket.on('call_transcript_update', (callId, line) => {
+      setTranscript(prev => [...prev, line]);
+    });
+
+    socket.on('chat_response', (msg) => {
+      setIsLoading(false);
+      setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -144,124 +117,102 @@ const Chat: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [...messages, { role: 'user', text: userMsg }].map(m => ({
-          role: m.role,
-          parts: [{ text: m.text }]
-        })),
-        config: {
-          systemInstruction: 'You are Health.me, a professional medical AI assistant. You are knowledgeable about symptoms, medication, and clinical processes. Be empathetic, clinical yet accessible, and always prioritize user safety. If symptoms sound urgent, recommend using the Emergency Alert feature. Always state you are an AI assistant.',
-        }
+      // Send to backend via REST (or WS, but REST handles the ElevenLabs agent initiation better initially)
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: userMsg })
       });
 
-      const aiText = response.text || "I apologize, I'm having trouble processing that right now.";
-      setMessages(prev => [...prev, { role: 'model', text: aiText }]);
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status} ${res.statusText}`);
+      }
+
+      const data = await res.json();
+
+      // Gemini returns { message: "...", conversation_id: "..." }
+      if (data.message) {
+        setMessages(prev => [...prev, { role: 'model', text: data.message }]);
+      }
+      setIsLoading(false);
+
     } catch (error) {
       console.error("Chat Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "I encountered a connectivity issue. Please try again." }]);
-    } finally {
+      setMessages(prev => [...prev, { role: 'model', text: "Connection error. Please check backend." }]);
       setIsLoading(false);
     }
   };
 
-  const handleNewChat = () => {
-    setMessages([{ role: 'model', text: 'New conversation started. How can I assist you with your health today?' }]);
-    setIsCompleted(false);
-    setActiveSessionId(null);
-    navigate('/chat');
+  const handleEmergencyConfirm = async () => {
+    setShowEmergency(false);
+    // Call the mock emergency line
+    // In demo, we might just show a "Calling..." UI or use Twilio
+    // For now, let's pretend a call started
+    setIsCallActive(true);
+    // Trigger backend call
+    await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
+      method: 'POST',
+      body: JSON.stringify({ type: 'emergency' }),
+      headers: { 'Content-Type': 'application/json' }
+    });
   };
 
-  const handleAppointmentConfirm = (details: { day: string; date: string; time: string }) => {
+  const handleNewChat = () => {
+    setMessages([{ role: 'model', text: 'New conversation started. How can I assist you with your health today?' }]);
+  };
+
+  const handleClinicSelect = async (clinic: { name: string; phone?: string }) => {
     setActiveWidget('none');
-    setMessages(prev => [...prev, 
-      { role: 'model', text: `Appointment confirmed for ${details.day}, Oct ${details.date} at ${details.time}.` }
-    ]);
     setIsCallActive(true);
+    setMessages(prev => [...prev, 
+      { role: 'model', text: `Calling ${clinic.name} to schedule your appointment... Our AI assistant will speak with the receptionist on your behalf.` }
+    ]);
+    
+    try {
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone: '+18194755578', // Demo: always call this number
+          clinic_name: clinic.name
+        })
+      });
+    } catch (error) {
+      console.error('Failed to initiate call:', error);
+      setMessages(prev => [...prev, 
+        { role: 'model', text: 'Sorry, there was an issue connecting the call. Please try again.' }
+      ]);
+      setIsCallActive(false);
+    }
+  };
+
+  const handleAppointmentConfirm = async (details: { day: string; date: string; time: string }) => {
+    setActiveWidget('none');
+    const appointmentText = `${details.day}, the ${details.date} at ${details.time}`;
+    
+    // Send selection to active call
+    try {
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: appointmentText })
+      });
+      
+      setMessages(prev => [...prev,
+        { role: 'model', text: `Great! I've told the clinic you'd like the appointment on ${appointmentText}. The receptionist is confirming now...` }
+      ]);
+    } catch (error) {
+      console.error('Failed to send appointment selection:', error);
+      setMessages(prev => [...prev,
+        { role: 'model', text: `Appointment selected: ${appointmentText}. (Note: Could not update the call)` }
+      ]);
+    }
   };
 
   // Derived state for Right Panel visibility
   const showRightPanel = activeWidget !== 'none' || isCallActive;
-
-  // Fake recent sessions data with message history
-  const sessionData = [
-    {
-      id: 1,
-      title: 'General checkup followup',
-      date: 'Today',
-      status: 'active' as const,
-      messages: [
-        { role: 'model' as const, text: 'Hello! I see you had a general checkup last week. How are you feeling since then?' },
-        { role: 'user' as const, text: 'I\'ve been feeling much better, but I still have some mild fatigue in the afternoons.' },
-        { role: 'model' as const, text: 'That\'s good to hear you\'re improving! Mild afternoon fatigue can be normal during recovery. Make sure you\'re staying hydrated and getting adequate sleep. If the fatigue persists beyond another week, we should schedule a follow-up.' },
-      ]
-    },
-    {
-      id: 2,
-      title: 'Lower back pain query',
-      date: 'Yesterday',
-      status: 'completed' as const,
-      messages: [
-        { role: 'model' as const, text: 'Hello! How can I help you today?' },
-        { role: 'user' as const, text: 'I\'ve been experiencing lower back pain for the past few days, especially when sitting for long periods.' },
-        { role: 'model' as const, text: 'Lower back pain from prolonged sitting is quite common. I recommend taking breaks every 30 minutes to stretch, ensuring your chair provides proper lumbar support, and doing gentle stretches. Would you like me to find a nearby clinic if the pain persists?' },
-      ]
-    },
-    {
-      id: 3,
-      title: 'Prescription refill request',
-      date: 'Jan 21',
-      status: 'completed' as const,
-      messages: [
-        { role: 'model' as const, text: 'Hello! How can I assist you today?' },
-        { role: 'user' as const, text: 'I need to refill my blood pressure medication. I\'m running low.' },
-        { role: 'model' as const, text: 'I can help you with that. I see you\'re on Lisinopril 10mg. I\'ve sent a refill request to your pharmacy. It should be ready for pickup within 24 hours. Remember to take it at the same time each day.' },
-      ]
-    },
-    {
-      id: 4,
-      title: 'Headache symptoms',
-      date: 'Jan 19',
-      status: 'completed' as const,
-      messages: [
-        { role: 'model' as const, text: 'Hello! What brings you in today?' },
-        { role: 'user' as const, text: 'I\'ve been having recurring headaches for the past week. They usually start in the afternoon.' },
-        { role: 'model' as const, text: 'Recurring afternoon headaches could be related to eye strain, dehydration, or tension. Are you spending a lot of time on screens? Try the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds. Also ensure you\'re drinking enough water.' },
-      ]
-    },
-    {
-      id: 5,
-      title: 'Annual physical booking',
-      date: 'Jan 15',
-      status: 'completed' as const,
-      messages: [
-        { role: 'model' as const, text: 'Hello! How can I help you today?' },
-        { role: 'user' as const, text: 'I\'d like to schedule my annual physical exam.' },
-        { role: 'model' as const, text: 'I\'d be happy to help you book your annual physical. I found several clinics near you with availability this week. Would you like me to show you the options?' },
-        { role: 'user' as const, text: 'Yes please!' },
-        { role: 'model' as const, text: 'I\'ve found City Health Center with openings on Thursday and Friday morning. Shall I book one of those slots for you?' },
-      ]
-    },
-  ];
-
-  const [searchParams] = useSearchParams();
-  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
-  const [isCompleted, setIsCompleted] = useState(false);
-
-  // Load session from URL params
-  useEffect(() => {
-    const sessionParam = searchParams.get('session');
-    if (sessionParam) {
-      const sessionId = parseInt(sessionParam);
-      const session = sessionData.find(s => s.id === sessionId);
-      if (session) {
-        setActiveSessionId(sessionId);
-        setMessages(session.messages);
-        setIsCompleted(session.status === 'completed');
-      }
-    }
-  }, [searchParams]);
 
   return (
     <div className="flex h-full bg-soft-cream relative overflow-hidden">
@@ -270,68 +221,63 @@ const Chat: React.FC = () => {
         <div className="max-w-4xl mx-auto w-full flex flex-col h-full px-6">
           <div className="py-6 border-b border-black/5 flex justify-between items-center flex-shrink-0">
             <div className="flex items-center gap-4">
-               <div>
-                 <h1 className="serif-font text-3xl text-primary">AI Health Assistant</h1>
-                 <div className="flex items-center gap-2 mt-0.5">
-                    <div className="px-2 py-0.5 bg-green-50 rounded-full flex items-center space-x-1.5 border border-green-100">
-                      <span className="size-1 rounded-full bg-green-500"></span>
-                      <span className="text-[9px] font-black text-green-700 uppercase tracking-widest">Secure session</span>
-                    </div>
-                 </div>
-               </div>
+              <div>
+                <h1 className="serif-font text-3xl text-primary">AI Health Assistant</h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="px-2 py-0.5 bg-green-50 rounded-full flex items-center space-x-1.5 border border-green-100">
+                    <span className="size-1 rounded-full bg-green-500"></span>
+                    <span className="text-[9px] font-black text-green-700 uppercase tracking-widest">Secure session</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
-               <button 
-                 onClick={() => setActiveWidget(activeWidget === 'location' ? 'none' : 'location')}
-                 className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
-                    activeWidget === 'location' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
-                 }`}
-               >
-                 <span className="material-symbols-outlined text-sm">location_on</span>
-                 Locations
-               </button>
-               <button 
-                 onClick={() => setActiveWidget(activeWidget === 'schedule' ? 'none' : 'schedule')}
-                 className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
-                    activeWidget === 'schedule' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
-                 }`}
-               >
-                 <span className="material-symbols-outlined text-sm">calendar_month</span>
-                 Schedule
-               </button>
-               <button 
-                 onClick={() => setIsCallActive(!isCallActive)}
-                 className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${
-                    isCallActive ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
-                 }`}
-               >
-                 <span className={`material-symbols-outlined text-sm ${isCallActive ? 'rotate-[135deg]' : ''}`}>call</span>
-                 {isCallActive ? 'End' : 'Call'}
-               </button>
+              <button
+                onClick={() => setActiveWidget(activeWidget === 'location' ? 'none' : 'location')}
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${activeWidget === 'location' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-sm">location_on</span>
+                Locations
+              </button>
+              <button
+                onClick={() => setActiveWidget(activeWidget === 'schedule' ? 'none' : 'schedule')}
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${activeWidget === 'schedule' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-sm">calendar_month</span>
+                Schedule
+              </button>
+              <button
+                onClick={() => setIsCallActive(!isCallActive)}
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${isCallActive ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-sm">phone_in_talk</span>
+                {isCallActive ? 'End Call' : 'Call'}
+              </button>
             </div>
           </div>
 
-          <div 
+          <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto py-8 space-y-8 custom-scrollbar pr-2 scroll-smooth"
           >
             {messages.map((msg, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
               >
                 <div className={`flex gap-4 max-w-[90%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`size-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold shadow-sm ${
-                    msg.role === 'user' ? 'bg-black text-white' : 'bg-primary text-white'
-                  }`}>
+                  <div className={`size-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold shadow-sm ${msg.role === 'user' ? 'bg-black text-white' : 'bg-primary text-white'
+                    }`}>
                     {msg.role === 'user' ? 'SM' : <span className="material-symbols-outlined text-base">smart_toy</span>}
                   </div>
-                  
-                  <div className={`rounded-3xl p-5 shadow-sm border border-black/5 ${
-                    msg.role === 'user' 
-                      ? 'bg-primary text-white rounded-tr-none' 
+
+                  <div className={`rounded-3xl p-5 shadow-sm border border-black/5 ${msg.role === 'user'
+                      ? 'bg-primary text-white rounded-tr-none'
                       : 'bg-white text-primary rounded-tl-none'
-                  }`}>
+                    }`}>
                     <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                   </div>
                 </div>
@@ -354,18 +300,6 @@ const Chat: React.FC = () => {
           </div>
 
           <div className="py-8 flex-shrink-0">
-            {isCompleted ? (
-              <div className="bg-gray-100 border border-black/5 rounded-[32px] p-4 flex items-center justify-center gap-3">
-                <span className="material-symbols-outlined text-gray-400">lock</span>
-                <p className="text-gray-500 text-sm font-medium">This conversation is completed and read-only</p>
-                <button
-                  onClick={handleNewChat}
-                  className="ml-4 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-black transition-all"
-                >
-                  Start New Chat
-                </button>
-              </div>
-            ) : (
             <div className="flex items-center gap-3">
               <button
                 onClick={handleNewChat}
@@ -376,90 +310,68 @@ const Chat: React.FC = () => {
                 <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">New</span>
               </button>
 
-              <div className={`flex-1 bg-white border shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 transition-all ${
-                  isListening
-                    ? 'border-red-400 ring-2 ring-red-100 focus-within:ring-red-200'
-                    : 'border-black/5 focus-within:ring-primary/10'
-                }`}>
+              <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center space-x-2 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
                 <button className="p-3 text-gray-400 hover:text-primary transition-colors">
                   <span className="material-symbols-outlined">attachment</span>
                 </button>
                 <input
                   className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder:text-gray-400 py-3"
-                  placeholder={isListening ? "Listening..." : "Ask about symptoms or bookings..."}
+                  placeholder="Ask about symptoms or bookings..."
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 />
-                {speechSupported && (
-                  <button
-                    onClick={toggleListening}
-                    className={`p-3 transition-all rounded-xl ${
-                      isListening
-                        ? 'text-red-500 bg-red-50 animate-pulse'
-                        : 'text-gray-400 hover:text-primary hover:bg-gray-50'
-                    }`}
-                    title={isListening ? "Stop listening" : "Voice input"}
-                  >
-                    <span className="material-symbols-outlined">
-                      {isListening ? 'mic' : 'mic_none'}
-                    </span>
-                  </button>
-                )}
                 <button
                   onClick={handleSend}
                   disabled={isLoading || !input.trim()}
-                  className={`size-11 rounded-2xl transition-all flex items-center justify-center ${
-                    isLoading || !input.trim()
+                  className={`size-11 rounded-2xl transition-all flex items-center justify-center ${isLoading || !input.trim()
                       ? 'bg-gray-100 text-gray-400'
                       : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined">arrow_upward</span>
                 </button>
               </div>
             </div>
-            )}
 
-            {!isCompleted && (
             <div className="mt-4 flex justify-center gap-6 opacity-40">
-               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                 <span className="material-symbols-outlined text-[12px] fill-1">verified</span>
-                 HIPAA Compliant
-               </span>
-               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                 <span className="material-symbols-outlined text-[12px] fill-1">lock</span>
-                 Private Session
-               </span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[12px] fill-1">verified</span>
+                HIPAA Compliant
+              </span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[12px] fill-1">lock</span>
+                Private Session
+              </span>
             </div>
-            )}
           </div>
         </div>
       </div>
 
       {/* Shared Right Sidebar */}
-      <div 
-        className={`bg-white border-l border-black/5 shadow-xl transition-all duration-500 ease-in-out flex flex-col ${
-          showRightPanel ? 'w-full lg:w-1/2 translate-x-0' : 'w-0 translate-x-full opacity-0'
-        }`}
+      <div
+        className={`bg-white border-l border-black/5 shadow-xl transition-all duration-500 ease-in-out flex flex-col ${showRightPanel ? 'w-full lg:w-1/2 translate-x-0' : 'w-0 translate-x-full opacity-0'
+          }`}
       >
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           {/* Top Widget Area (Location or Schedule) */}
           {activeWidget !== 'none' && (
             <div className={`flex-1 flex flex-col min-h-0 ${isCallActive ? 'h-[60%]' : 'h-full'}`}>
               {activeWidget === 'location' && (
-                <LocationWidget 
-                  onClose={() => setActiveWidget('none')} 
-                  onSelect={() => setActiveWidget('schedule')}
+                <LocationWidget
+                  onClose={() => setActiveWidget('none')}
+                  onClinicSelect={handleClinicSelect}
+                  clinics={clinics}
                 />
               )}
               {activeWidget === 'schedule' && (
                 <div className="h-full overflow-y-auto">
-                   <AppointmentScheduler 
-                     onClose={() => setActiveWidget('none')}
-                     onConfirm={handleAppointmentConfirm}
-                   />
+                  <AppointmentScheduler
+                    onClose={() => setActiveWidget('none')}
+                    onConfirm={handleAppointmentConfirm}
+                    availableSlots={availableSlots}
+                  />
                 </div>
               )}
             </div>
@@ -468,14 +380,21 @@ const Chat: React.FC = () => {
           {/* Bottom Call Area */}
           {isCallActive && (
             <div className={`${activeWidget !== 'none' ? 'flex-shrink-0' : 'flex-1 h-full'}`}>
-              <LiveCallPanel 
-                onClose={() => setIsCallActive(false)} 
+              <LiveCallPanel
+                onClose={() => setIsCallActive(false)}
                 minimized={activeWidget !== 'none'}
+                transcript={transcript}
               />
             </div>
           )}
         </div>
       </div>
+      {showEmergency && (
+        <EmergencyModal
+          onCancel={() => setShowEmergency(false)}
+          onConfirm={handleEmergencyConfirm}
+        />
+      )}
     </div>
   );
 };

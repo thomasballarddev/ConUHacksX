@@ -3,125 +3,127 @@ import React, { useState } from 'react';
 interface AppointmentSchedulerProps {
   onClose?: () => void;
   onConfirm?: (details: { day: string; date: string; time: string }) => void;
+  availableSlots?: { day: string; date: string; time: string }[];
 }
 
-const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm }) => {
-  const [selectedSlot, setSelectedSlot] = useState<{ day: string; date: string; time: string } | null>(null);
+const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm, availableSlots = [] }) => {
+  const [selectedDay, setSelectedDay] = useState('MON');
+  const [selectedTime, setSelectedTime] = useState('08:00 AM');
 
-  const days = [
-    { day: 'SAT', date: '25' },
-    { day: 'SUN', date: '26' },
-    { day: 'MON', date: '27' },
-    { day: 'TUE', date: '28' },
-    { day: 'WED', date: '29' },
-    { day: 'THU', date: '30' },
-    { day: 'FRI', date: '31' },
+  // Auto-select first available slot when data changes
+  React.useEffect(() => {
+    if (availableSlots.length > 0) {
+      setSelectedDay(availableSlots[0].day);
+      setSelectedTime(availableSlots[0].time);
+    }
+  }, [availableSlots]);
+
+  const days: { day: string; date: string; disabled?: boolean }[] = [
+    { day: 'MON', date: '12' },
+    { day: 'TUE', date: '13' },
+    { day: 'WED', date: '14' },
+    { day: 'THU', date: '15' },
+    { day: 'FRI', date: '16' },
+    { day: 'SAT', date: '17' },
+    { day: 'SUN', date: '18' },
   ];
 
-  const slots: Record<string, string[]> = {
-    'SAT': ['10:00 AM', '11:30 AM'],
-    'SUN': ['09:00 AM', '01:00 PM'],
-    'MON': ['09:00 AM', '10:30 AM', '02:00 PM'],
-    'TUE': ['08:00 AM', '11:00 AM', '03:30 PM'],
-    'WED': ['02:00 PM', '04:30 PM'],
-    'THU': ['09:00 AM', '11:00 AM', '02:30 PM', '04:00 PM'],
-    'FRI': ['09:15 AM', '03:00 PM', '05:00 PM'],
-  };
-
-  const handleSelectSlot = (day: string, date: string, time: string) => {
-    setSelectedSlot({ day, date, time });
-  };
+  // Transform availableSlots to slots map
+  const slots: Record<string, string[]> = {};
+  
+  if (availableSlots.length > 0) {
+      availableSlots.forEach(slot => {
+          if (!slots[slot.day]) slots[slot.day] = [];
+          if (!slots[slot.day].includes(slot.time)) slots[slot.day].push(slot.time);
+      });
+  } else {
+      // Default / Fallback
+      slots['MON'] = ['09:00 AM', '10:30 AM'];
+      slots['TUE'] = ['08:00 AM', '11:00 AM'];
+      slots['WED'] = ['02:00 PM', '04:30 PM'];
+      slots['FRI'] = ['09:15 AM', '03:00 PM'];
+      slots['SAT'] = ['10:00 AM'];
+      slots['SUN'] = ['11:30 AM'];
+  }
 
   const handleConfirm = () => {
-    if (selectedSlot && onConfirm) {
-      onConfirm(selectedSlot);
+    const dayObj = days.find(d => d.day === selectedDay);
+    if (dayObj && onConfirm) {
+      onConfirm({
+        day: dayObj.day,
+        date: dayObj.date,
+        time: selectedTime
+      });
     }
   };
 
   return (
-    <div className="h-full bg-soft-cream flex flex-col overflow-hidden animate-in slide-in-from-right duration-300 w-full">
-      {/* Header */}
-      <div className="p-6 border-b border-black/5 flex justify-between items-center bg-white/50 backdrop-blur-sm flex-shrink-0">
-        <div>
-          <h2 className="serif-font text-3xl text-primary">Schedule Appointment</h2>
-          <p className="text-gray-500 text-xs font-medium mt-1">
-            January 2025 • Select an available time
-          </p>
-        </div>
-        {onClose && (
-          <button onClick={onClose} className="size-8 rounded-full bg-white border border-black/5 flex items-center justify-center hover:bg-black hover:text-white transition-all">
-            <span className="material-symbols-outlined text-sm">close</span>
-          </button>
-        )}
-      </div>
-
-      {/* Week View with All Slots */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-        <div className="grid grid-cols-7 gap-2">
-          {days.map((dayItem) => (
-            <div key={dayItem.day} className="flex flex-col">
-              {/* Day Header */}
-              <div className="text-center pb-2 border-b border-black/5 mb-2">
-                <div className="text-[9px] font-black uppercase tracking-wider text-gray-400">{dayItem.day}</div>
-                <div className="text-lg font-black text-primary">{dayItem.date}</div>
-              </div>
-              
-              {/* Time Slots */}
-              <div className="space-y-2">
-                {slots[dayItem.day]?.map(time => {
-                  const isSelected = selectedSlot?.day === dayItem.day && selectedSlot?.time === time;
-                  return (
-                    <button
-                      key={time}
-                      onClick={() => handleSelectSlot(dayItem.day, dayItem.date, time)}
-                      className={`w-full py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${
-                        isSelected
-                          ? 'bg-primary text-white shadow-lg scale-105'
-                          : 'bg-white border border-black/5 text-primary hover:border-primary hover:scale-102'
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Selected Slot Summary & Confirm */}
-      <div className="p-4 border-t border-black/5 bg-white/50 backdrop-blur-sm flex-shrink-0 space-y-3">
-        {selectedSlot ? (
-          <div className="bg-white rounded-xl p-4 border border-black/5 flex items-center gap-3">
-            <span className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary">event</span>
-            </span>
-            <div className="flex-1">
-              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Selected</p>
-              <p className="font-bold text-primary text-sm">
-                {selectedSlot.day}, Jan {selectedSlot.date} at {selectedSlot.time}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-2 text-gray-400 text-xs">
-            Select a time slot above
-          </div>
-        )}
-        
-        <button 
-          onClick={handleConfirm}
-          disabled={!selectedSlot}
-          className={`w-full py-4 rounded-2xl text-sm font-black transition-all ${
-            selectedSlot
-              ? 'bg-primary text-white shadow-lg shadow-black/5 hover:bg-black active:scale-[0.98]'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
-        >
-          Confirm Appointment
+    <div className="bg-card-beige w-full max-w-5xl rounded-[40px] shadow-2xl border border-black/5 p-8 md:p-12 overflow-hidden relative animate-in zoom-in-95 duration-300">
+      {onClose && (
+        <button onClick={onClose} className="absolute top-8 right-8 size-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-black/5 hover:bg-primary hover:text-white transition-all z-10">
+          <span className="material-symbols-outlined text-lg">close</span>
         </button>
+      )}
+      
+      <div className="flex justify-between items-start mb-12">
+        <div>
+          <h2 className="serif-font text-3xl md:text-4xl text-primary mb-2">Select Appointment Time</h2>
+          <p className="text-gray-400 font-medium">Confirmed with City Health Center</p>
+        </div>
+        <div className="flex gap-2 hidden md:flex">
+          <button className="size-12 bg-white rounded-full flex items-center justify-center border border-black/5 hover:shadow-md transition-all">
+            <span className="material-symbols-outlined">chevron_left</span>
+          </button>
+          <button className="size-12 bg-white rounded-full flex items-center justify-center border border-black/5 hover:shadow-md transition-all">
+            <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
       </div>
+
+      <div className="grid grid-cols-4 md:grid-cols-7 gap-y-8 gap-x-2 md:gap-4 mb-16">
+        {days.map((item) => (
+          <div key={item.date} className="flex flex-col items-center">
+            <div className={`text-[10px] md:text-[11px] font-black uppercase tracking-widest mb-3 ${item.disabled ? 'text-gray-200' : 'text-gray-400'}`}>
+              {item.day}
+            </div>
+            <div 
+              onClick={() => !item.disabled && setSelectedDay(item.day)}
+              className={`text-xl md:text-2xl font-black mb-6 cursor-pointer transition-all ${
+                item.day === selectedDay ? 'text-primary scale-110' : item.disabled ? 'text-gray-200 cursor-default' : 'text-primary opacity-40 hover:opacity-100'
+              }`}
+            >
+              {item.date}
+            </div>
+            
+            <div className="flex flex-col gap-2 md:gap-3 w-full px-1">
+              {item.disabled ? (
+                <div className="text-[10px] md:text-[11px] italic text-gray-300 font-medium mt-2 text-center">No slots</div>
+              ) : (
+                slots[item.day]?.map(time => (
+                  <button
+                    key={time}
+                    onClick={() => { setSelectedDay(item.day); setSelectedTime(time); }}
+                    className={`w-full py-2.5 md:py-4 rounded-2xl md:rounded-3xl border text-[11px] md:text-[13px] font-bold transition-all whitespace-nowrap ${
+                      selectedDay === item.day && selectedTime === time
+                        ? 'bg-primary text-white border-primary shadow-xl scale-105'
+                        : 'bg-white/40 border-black/5 text-primary hover:border-primary/20'
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button 
+        onClick={handleConfirm}
+        className="w-full bg-primary text-white py-6 md:py-8 rounded-[28px] text-base md:text-lg font-black shadow-2xl hover:bg-black transition-all active:scale-[0.98]"
+      >
+        Confirm Appointment — {days.find(d => d.day === selectedDay)?.day}, Oct {days.find(d => d.day === selectedDay)?.date} at {selectedTime}
+      </button>
     </div>
   );
 };
