@@ -71,17 +71,6 @@ const Header: React.FC = () => {
           <img src="https://picsum.photos/seed/alex/200/200" alt="Profile" className="w-full h-full object-cover" />
         </button>
 
-        <div className="h-6 w-[1px] bg-black/5 mx-1"></div>
-
-        {/* Emergency Button */}
-        <button
-          onClick={() => navigate('/emergency')}
-          className="group flex items-center gap-2 bg-white border border-red-100 hover:border-red-500 px-4 py-2 rounded-full transition-all shadow-sm hover:shadow-md"
-        >
-          <span className="material-symbols-outlined text-emergency text-[14px] fill-1">star</span>
-          <span className="text-[11px] font-black text-emergency uppercase tracking-[0.1em]">Emergency</span>
-          <span className="material-symbols-outlined text-emergency text-lg group-hover:scale-110 transition-transform">radio_button_checked</span>
-        </button>
       </div>
     </header>
   );

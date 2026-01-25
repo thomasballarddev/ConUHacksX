@@ -256,10 +256,8 @@ const Chat: React.FC = () => {
     socket.on('chat_response', (msg: { role: string, content: string, audio?: string }) => {
       setIsLoading(false);
       setMessages(prev => [...prev, { role: 'model', text: msg.content }]);
-      speak(msg.content, () => {
-        // Auto-restart listening after AI finishes speaking
-        setTimeout(() => startListening(), 500);
-      }, msg.audio);
+      // Just speak the response, don't auto-activate mic
+      speak(msg.content, undefined, msg.audio);
     });
 
     // Agent needs user input during call
@@ -332,10 +330,7 @@ const Chat: React.FC = () => {
           saveMessage(user.uid, firestoreChatId, modelMessage);
         }
 
-        speak(data.message, () => {
-          // Auto-restart listening after AI finishes speaking
-          setTimeout(() => startListening(), 500);
-        }, data.audio);
+        speak(data.message, undefined, data.audio);
       }
       setIsLoading(false);
 
@@ -581,15 +576,15 @@ const Chat: React.FC = () => {
                 </button>
 
                 {isListening ? (
-                  <div className="flex-1 bg-white border-2 border-primary/30 shadow-2xl rounded-[32px] p-2 flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                  <div className="flex-1 bg-white border-2 border-primary/30 shadow-2xl rounded-[32px] p-2 flex items-center gap-2 animate-in fade-in zoom-in duration-300 min-w-0">
                     {/* Recording indicator */}
-                    <div className="flex items-center gap-2 px-3">
+                    <div className="flex items-center gap-2 px-3 flex-shrink-0">
                       <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
                       <AudioVisualizer audioData={audioData} />
                     </div>
 
                     {/* Transcript display */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="text-[15px] text-gray-800 truncate">
                         {voiceTranscript || <span className="text-gray-400 italic">Listening...</span>}
                       </p>
@@ -604,7 +599,7 @@ const Chat: React.FC = () => {
                         }
                       }}
                       disabled={!voiceTranscript.trim()}
-                      className={`size-11 rounded-2xl transition-all flex items-center justify-center ${voiceTranscript.trim()
+                      className={`size-11 rounded-2xl transition-all flex items-center justify-center flex-shrink-0 ${voiceTranscript.trim()
                         ? 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
                         : 'bg-gray-100 text-gray-400'
                         }`}
@@ -616,7 +611,7 @@ const Chat: React.FC = () => {
                     {/* Cancel button */}
                     <button
                       onClick={stopListening}
-                      className="size-11 rounded-2xl bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center"
+                      className="size-11 rounded-2xl bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center flex-shrink-0"
                       title="Cancel"
                     >
                       <span className="material-symbols-outlined text-xl">close</span>
