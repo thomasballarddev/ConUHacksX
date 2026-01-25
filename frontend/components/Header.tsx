@@ -68,7 +68,7 @@ const Header: React.FC = () => {
           onClick={() => navigate('/settings')}
           className="size-9 rounded-full overflow-hidden border-2 border-black/5 hover:border-primary transition-all"
         >
-          <img src="https://picsum.photos/seed/sam/200/200" alt="Profile" className="w-full h-full object-cover" />
+          <img src="https://picsum.photos/seed/alex/200/200" alt="Profile" className="w-full h-full object-cover" />
         </button>
 
         <div className="h-6 w-[1px] bg-black/5 mx-1"></div>

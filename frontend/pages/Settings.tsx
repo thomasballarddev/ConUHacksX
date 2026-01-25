@@ -4,7 +4,6 @@ const Settings: React.FC = () => {
   const [notifications, setNotifications] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState('en');
 
   const Toggle: React.FC<{ value: boolean; onChange: (v: boolean) => void }> = ({ value, onChange }) => (
@@ -30,11 +29,11 @@ const Settings: React.FC = () => {
         <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
           <div className="p-6 flex items-center gap-4 border-b border-black/5">
             <div className="size-16 rounded-full overflow-hidden border-2 border-black/5">
-              <img src="https://picsum.photos/seed/sam/200/200" alt="Profile" className="w-full h-full object-cover" />
+              <img src="https://picsum.photos/seed/alex/200/200" alt="Profile" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
-              <p className="font-bold text-lg text-primary">Sam Smith</p>
-              <p className="text-sm text-gray-400">sam.smith@email.com</p>
+              <p className="font-bold text-lg text-primary">Alex McGregor</p>
+              <p className="text-sm text-gray-400">alex.mcgregor@email.com</p>
             </div>
             <button className="px-4 py-2 bg-gray-50 text-primary text-xs font-bold rounded-xl hover:bg-gray-100 transition-all">
               Edit Profile
@@ -47,7 +46,7 @@ const Settings: React.FC = () => {
                 <span className="material-symbols-outlined text-gray-400">email</span>
                 <span className="text-sm font-medium text-primary">Email</span>
               </div>
-              <span className="text-sm text-gray-400">sam.smith@email.com</span>
+              <span className="text-sm text-gray-400">alex.mcgregor@email.com</span>
             </div>
             <div className="p-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -66,7 +65,7 @@ const Settings: React.FC = () => {
           </div>
         </div>
       </section>
-
+      
       {/* Notifications Section */}
       <section className="mb-10">
         <h2 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 px-1">Notifications</h2>
@@ -99,13 +98,6 @@ const Settings: React.FC = () => {
       <section className="mb-10">
         <h2 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 px-1">Preferences</h2>
         <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden divide-y divide-black/5">
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-primary">Dark Mode</p>
-              <p className="text-xs text-gray-400 mt-0.5">Switch to dark theme</p>
-            </div>
-            <Toggle value={darkMode} onChange={setDarkMode} />
-          </div>
           <div className="p-5 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-primary">Language</p>

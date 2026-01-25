@@ -65,7 +65,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp }) => {
                   <input 
                     className="w-full px-4 py-3.5 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]" 
                     id="firstName" 
-                    placeholder="Sam" 
+                    placeholder="Alex" 
                     type="text" 
                     required
                   />
@@ -75,7 +75,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp }) => {
                   <input 
                     className="w-full px-4 py-3.5 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]" 
                     id="lastName" 
-                    placeholder="Smith" 
+                    placeholder="McGregor" 
                     type="text" 
                     required
                   />

@@ -19,13 +19,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
         >
           <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-800 font-bold overflow-hidden border border-black/5 shadow-sm">
             <img
-              alt="Sam Smith"
+              alt="Alex McGregor"
               className="w-full h-full object-cover"
-              src="https://picsum.photos/seed/sam/200/200"
+              src="https://picsum.photos/seed/alex/200/200"
             />
           </div>
           <div>
-            <p className="text-sm font-semibold text-primary">Sam Smith</p>
+            <p className="text-sm font-semibold text-primary">Alex McGregor</p>
             <p className="text-[11px] text-gray-500 uppercase tracking-wider font-bold">Pro Member</p>
           </div>
         </NavLink>

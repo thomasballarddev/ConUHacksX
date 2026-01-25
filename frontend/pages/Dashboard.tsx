@@ -54,7 +54,7 @@ const Dashboard: React.FC = () => {
     <div className="px-8 pb-32">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="serif-font text-5xl text-primary mb-4 leading-tight">Welcome, Sam!</h1>
+          <h1 className="serif-font text-5xl text-primary mb-4 leading-tight">Welcome, Alex!</h1>
           <p className="text-xl text-gray-500 max-w-2xl leading-relaxed">
             Your personal AI health assistant is ready to help. How are you feeling today?
           </p>
