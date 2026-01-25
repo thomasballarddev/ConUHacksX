@@ -1,4 +1,3 @@
-import { emitChatResponse } from './websocket.js';
 import dotenv from 'dotenv';
 import WebSocket from 'ws';
 dotenv.config({ path: '../.env' });
@@ -7,137 +6,130 @@ const AGENT_ID = process.env.ELEVENLABS_AGENT_ID;
 if (!API_KEY) {
     console.warn('[ElevenLabs] Missing ELEVENLABS_API_KEY');
 }
-if (!AGENT_ID) {
-    console.warn('[ElevenLabs] Missing ELEVENLABS_AGENT_ID');
-}
-// Store active conversations
-const activeConversations = new Map();
-// Get signed URL for WebSocket connection
-export async function getSignedUrl() {
-    try {
-        const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`, {
-            method: 'GET',
-            headers: {
-                'xi-api-key': API_KEY || ''
-            }
-        });
-        if (!response.ok) {
-            throw new Error(`ElevenLabs API error: ${response.statusText}`);
+export async function sendChatMessage(message, conversationId) {
+    const signedUrlResponse = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`, {
+        method: 'GET',
+        headers: {
+            'xi-api-key': API_KEY || ''
         }
-        const data = await response.json();
-        return data.signed_url;
+    });
+    if (!signedUrlResponse.ok) {
+        throw new Error(`ElevenLabs API error: ${signedUrlResponse.statusText}`);
     }
-    catch (error) {
-        console.error('[ElevenLabs] Error getting signed URL:', error);
-        throw error;
-    }
-}
-// Send a chat message to the ElevenLabs agent via WebSocket (text-only mode)
-export async function sendChatMessage(message, sessionId = 'default') {
-    console.log(`[ElevenLabs] Sending message: "${message}" for session: ${sessionId}`);
-    try {
-        // For text-only mode, we need to connect via WebSocket
-        // Get signed URL first
-        const signedUrl = await getSignedUrl();
-        // Create WebSocket connection
-        return new Promise((resolve, reject) => {
-            const ws = new WebSocket(signedUrl);
-            let hasResponded = false;
-            let fullResponse = '';
-            let userMessageSent = false;
-            let responseCount = 0;
-            ws.onopen = () => {
-                console.log('[ElevenLabs] WebSocket connected');
-                // Send initialization for text-only mode
-                ws.send(JSON.stringify({
-                    type: 'conversation_initiation_client_data',
-                    conversation_config_override: {
-                        conversation: {
-                            text_only: true
-                        }
-                    }
-                }));
-                // Send the user's message after init
-                setTimeout(() => {
-                    console.log('[ElevenLabs] Sending user message:', message);
-                    ws.send(JSON.stringify({
-                        type: 'user_message',
-                        text: message
-                    }));
-                    userMessageSent = true;
-                }, 500);
-            };
-            ws.onmessage = (event) => {
-                try {
-                    const rawData = typeof event.data === 'string' ? event.data : event.data.toString();
-                    console.log('[ElevenLabs] Raw message:', rawData.substring(0, 200));
-                    const data = JSON.parse(rawData);
-                    console.log('[ElevenLabs] Received:', data.type);
-                    // Handle agent response - ElevenLabs format: agent_response_event.agent_response
-                    if (data.type === 'agent_response' && data.agent_response_event) {
-                        responseCount++;
-                        const responseText = data.agent_response_event.agent_response || '';
-                        console.log('[ElevenLabs] Agent response #' + responseCount + ':', responseText);
-                        // Only resolve after user message was sent (skip initial greeting)
-                        if (userMessageSent && !hasResponded && responseText) {
-                            fullResponse = responseText;
-                            hasResponded = true;
-                            // Emit via WebSocket to frontend
-                            emitChatResponse({
-                                role: 'assistant',
-                                content: fullResponse,
-                                timestamp: new Date().toISOString()
-                            });
-                            ws.close();
-                            resolve({ message: fullResponse });
-                        }
-                    }
-                }
-                catch (e) {
-                    console.error('[ElevenLabs] Parse error:', e);
-                }
-            };
-            ws.onerror = (error) => {
-                console.error('[ElevenLabs] WebSocket error:', error.message || error);
-                if (!hasResponded) {
-                    hasResponded = true;
-                    reject(new Error('WebSocket connection error: ' + (error.message || 'unknown')));
-                }
-            };
-            ws.onclose = () => {
-                console.log('[ElevenLabs] WebSocket closed');
-                if (!hasResponded) {
-                    hasResponded = true;
-                    if (fullResponse) {
-                        resolve({ message: fullResponse });
-                    }
-                    else {
-                        reject(new Error('Connection closed without response'));
-                    }
-                }
-            };
-            // Timeout after 30 seconds
-            setTimeout(() => {
-                if (!hasResponded) {
-                    hasResponded = true;
+    const { conversation_id } = await signedUrlResponse.json();
+    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${AGENT_ID}&conversation_id=${conversation_id}`;
+    return new Promise((resolve, reject) => {
+        const ws = new WebSocket(wsUrl);
+        let agentText = "";
+        let resolved = false;
+        let userMessageSent = false;
+        let greetingReceived = false;
+        let responseCount = 0;
+        const resolveOnce = (response) => {
+            if (!resolved) {
+                resolved = true;
+                if (ws.readyState === WebSocket.OPEN) {
                     ws.close();
-                    if (fullResponse) {
-                        resolve({ message: fullResponse });
+                }
+                resolve(response);
+            }
+        };
+        const sendUserMessage = () => {
+            if (!userMessageSent) {
+                userMessageSent = true;
+                agentText = ""; // Clear the greeting text
+                const payload = {
+                    type: 'user_message',
+                    user_message: {
+                        text: message
                     }
-                    else {
-                        reject(new Error('Request timeout'));
+                };
+                console.log('[ElevenLabs] Sending user message:', message);
+                ws.send(JSON.stringify(payload));
+            }
+        };
+        ws.onopen = () => {
+            console.log('[ElevenLabs] Connected to Agent WS');
+            // Don't send immediately - wait for greeting to complete
+        };
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data.toString());
+                console.log('[ElevenLabs] WS Message:', data.type, JSON.stringify(data).substring(0, 200));
+                if (data.type === 'ping') {
+                    ws.send(JSON.stringify({ type: 'pong', event_id: data.ping_event?.event_id }));
+                }
+                if (data.type === 'agent_response') {
+                    responseCount++;
+                    const evt = data.agent_response_event || data;
+                    const text = evt.agent_response || evt.response || evt.text || data.text || "";
+                    if (text && typeof text === 'string' && text.length > 0) {
+                        if (userMessageSent) {
+                            // This is the response to our message
+                            agentText += text;
+                        }
+                        else {
+                            // This is the initial greeting - mark it received
+                            greetingReceived = true;
+                            console.log('[ElevenLabs] Greeting received:', text);
+                        }
                     }
                 }
-            }, 30000);
-        });
-    }
-    catch (error) {
-        console.error('[ElevenLabs] Error sending message:', error);
-        throw error;
-    }
+                if (data.type === 'agent_response_correction' && userMessageSent) {
+                    const correctedText = data.agent_response_correction_event?.corrected_response || data.corrected_response || "";
+                    if (correctedText) {
+                        agentText = correctedText;
+                    }
+                }
+                // When greeting audio ends, send our message
+                if (data.type === 'audio' && data.audio_event?.end_of_stream) {
+                    if (!userMessageSent && greetingReceived) {
+                        console.log('[ElevenLabs] Greeting audio finished, sending user message');
+                        sendUserMessage();
+                    }
+                    else if (userMessageSent && agentText) {
+                        // Response to our message is complete
+                        resolveOnce({ conversation_id, message: agentText });
+                    }
+                }
+            }
+            catch (e) {
+                console.error('Error parsing WS message', e);
+            }
+        };
+        // Fallback: if no audio end_of_stream, send message after delay
+        setTimeout(() => {
+            if (!userMessageSent) {
+                console.log('[ElevenLabs] Timeout - sending user message anyway');
+                sendUserMessage();
+            }
+        }, 3000);
+        // Final timeout
+        setTimeout(() => {
+            resolveOnce({
+                conversation_id,
+                message: agentText || "Agent processing... (no response received)"
+            });
+        }, 15000);
+        ws.onerror = (error) => {
+            console.error('[ElevenLabs] WS Error:', error);
+            if (!resolved) {
+                reject(error);
+            }
+        };
+        ws.onclose = () => {
+            console.log('[ElevenLabs] WS Closed');
+            if (!resolved && agentText && userMessageSent) {
+                resolveOnce({ conversation_id, message: agentText });
+            }
+        };
+    });
 }
 // Triggers a call to the user or clinic (if supported by API)
+// For this hackathon, we might rely on the Agent being triggered manually or via a specific "start call" endpoint
 export async function triggerCall(phoneNumber, type) {
     console.log(`[ElevenLabs] Triggering call to ${phoneNumber} (${type})`);
+    // This would use the ElevenLabs API to initiate an outbound call if available
+    // Mocking it for now as "action successful" 
     return { success: true, message: 'Call initiated' };
 }
