@@ -533,7 +533,7 @@ const Chat: React.FC = () => {
                 <div className={`flex gap-4 max-w-[90%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`size-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold shadow-sm ${msg.role === 'user' ? 'bg-black text-white' : 'bg-primary text-white'
                     }`}>
-                    {msg.role === 'user' ? 'SM' : <span className="material-symbols-outlined text-base">smart_toy</span>}
+                    {msg.role === 'user' ? 'AM' : <span className="material-symbols-outlined text-base">smart_toy</span>}
                   </div>
 
                   <div className={`rounded-3xl p-5 shadow-sm border border-black/5 ${msg.role === 'user'
