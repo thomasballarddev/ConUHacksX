@@ -55,6 +55,8 @@ export async function sendChatMessage(message: string, sessionId: string = 'defa
       const ws = new WebSocket(signedUrl);
       let hasResponded = false;
       let fullResponse = '';
+      let userMessageSent = false;
+      let responseCount = 0;
 
       ws.onopen = () => {
         console.log('[ElevenLabs] WebSocket connected');
@@ -63,21 +65,20 @@ export async function sendChatMessage(message: string, sessionId: string = 'defa
         ws.send(JSON.stringify({
           type: 'conversation_initiation_client_data',
           conversation_config_override: {
-            agent: {
-              tts: {
-                // Disable audio output for text-only
-              }
+            conversation: {
+              text_only: true
             }
-          },
-          text_only: true
+          }
         }));
 
-        // Send the user's message
+        // Send the user's message after init
         setTimeout(() => {
+          console.log('[ElevenLabs] Sending user message:', message);
           ws.send(JSON.stringify({
             type: 'user_message',
             text: message
           }));
+          userMessageSent = true;
         }, 500);
       };
 
@@ -90,11 +91,13 @@ export async function sendChatMessage(message: string, sessionId: string = 'defa
 
           // Handle agent response - ElevenLabs format: agent_response_event.agent_response
           if (data.type === 'agent_response' && data.agent_response_event) {
-            fullResponse = data.agent_response_event.agent_response || '';
-            console.log('[ElevenLabs] Agent response:', fullResponse);
+            responseCount++;
+            const responseText = data.agent_response_event.agent_response || '';
+            console.log('[ElevenLabs] Agent response #' + responseCount + ':', responseText);
 
-            // Resolve immediately on first agent response
-            if (!hasResponded && fullResponse) {
+            // Only resolve after user message was sent (skip initial greeting)
+            if (userMessageSent && !hasResponded && responseText) {
+              fullResponse = responseText;
               hasResponded = true;
 
               // Emit via WebSocket to frontend
