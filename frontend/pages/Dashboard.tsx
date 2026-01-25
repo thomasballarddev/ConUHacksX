@@ -1,11 +1,56 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [showAllSessions, setShowAllSessions] = useState(false);
+
+  const allSessions = [
+    { id: 1, title: 'General checkup followup', date: 'Today', status: 'active', preview: "I've been feeling much better, but I still have some mild fatigue in the afternoons..." },
+    { id: 2, title: 'Lower back pain query', date: 'Yesterday', status: 'completed', preview: "I've been experiencing lower back pain for the past few days, especially when sitting..." },
+    { id: 3, title: 'Prescription refill request', date: 'Jan 21', status: 'completed', preview: "I need to refill my blood pressure medication. I'm running low..." },
+    { id: 4, title: 'Headache symptoms', date: 'Jan 19', status: 'completed', preview: "I've been having recurring headaches for the past week. They usually start in the afternoon..." },
+    { id: 5, title: 'Annual physical booking', date: 'Jan 15', status: 'completed', preview: "I'd like to schedule my annual physical exam. What availability do you have..." },
+  ];
 
   return (
+    <>
+    {/* View All Sessions Modal */}
+    {showAllSessions && (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAllSessions(false)}>
+        <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b border-black/5 flex items-center justify-between">
+            <h2 className="serif-font text-2xl text-primary">All Chat Sessions</h2>
+            <button onClick={() => setShowAllSessions(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-all">
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto max-h-[60vh] space-y-3">
+            {allSessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => { setShowAllSessions(false); navigate(`/chat?session=${session.id}`); }}
+                className="bg-gray-50 p-4 rounded-2xl border border-black/5 hover:bg-white hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-primary">{session.title}</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">{session.date}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider text-white px-2 py-1 rounded-lg ${
+                      session.status === 'active' ? 'bg-blue-500' : 'bg-green-600'
+                    }`}>
+                      {session.status === 'active' ? 'Active' : 'Completed'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 line-clamp-1">"{session.preview}"</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
     <div className="px-8 pb-32">
       <div className="max-w-6xl mx-auto">
         <div className="mb-12">
@@ -15,14 +60,14 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          {/* Quick Stats */}
+        <div className="mb-12">
+          {/* Daily Health Summary - Extended */}
           <div className="bg-card-beige p-8 rounded-3xl border border-black/5 shadow-sm">
             <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">monitoring</span>
               Daily Health Summary
             </h3>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
                 <div className="flex items-center space-x-4">
                   <div className="size-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
@@ -41,62 +86,157 @@ const Dashboard: React.FC = () => {
                 </div>
                 <span className="text-sm font-black">4,582 steps</span>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-8 rounded-3xl border border-black/5 shadow-sm flex flex-col">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-red-500 rounded-full pulse-red"></div>
-                <h3 className="font-bold text-lg">Active AI Booking</h3>
-              </div>
-              <span className="text-xs font-bold text-red-500 uppercase tracking-widest">Live Relay</span>
-            </div>
-            <div className="flex-1 bg-gray-50 rounded-2xl p-5 mb-6 overflow-hidden border border-black/5">
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 rounded-full bg-primary flex-shrink-0 flex items-center justify-center text-[10px] text-white font-bold">AI</div>
-                  <p className="text-xs text-gray-600 leading-relaxed italic">"Hello, I'm calling from Health.me for Sam Smith. We need to schedule a checkup for tomorrow morning..."</p>
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="size-10 bg-red-50 rounded-xl flex items-center justify-center text-red-500">
+                    <span className="material-symbols-outlined">favorite</span>
+                  </div>
+                  <span className="text-sm font-semibold">Heart Rate</span>
                 </div>
+                <span className="text-sm font-black">72 bpm</span>
               </div>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-bg-cream rounded-2xl border border-black/5">
-              <div className="flex items-center space-x-3">
-                <span className="material-symbols-outlined text-primary text-xl">phone_in_talk</span>
-                <span className="text-xs font-bold uppercase tracking-wider">Clinic: City Health</span>
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="size-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-500">
+                    <span className="material-symbols-outlined">bedtime</span>
+                  </div>
+                  <span className="text-sm font-semibold">Sleep</span>
+                </div>
+                <span className="text-sm font-black">7h 23m</span>
               </div>
-              <button 
-                onClick={() => navigate('/booking')}
-                className="text-[10px] font-black text-primary hover:text-red-500 uppercase transition-colors"
-              >
-                View Call
-              </button>
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="size-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500">
+                    <span className="material-symbols-outlined">local_fire_department</span>
+                  </div>
+                  <span className="text-sm font-semibold">Calories</span>
+                </div>
+                <span className="text-sm font-black">1,847 kcal</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="size-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-500">
+                    <span className="material-symbols-outlined">speed</span>
+                  </div>
+                  <span className="text-sm font-semibold">Blood Pressure</span>
+                </div>
+                <span className="text-sm font-black">120/80</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="size-10 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600">
+                    <span className="material-symbols-outlined">glucose</span>
+                  </div>
+                  <span className="text-sm font-semibold">Blood Sugar</span>
+                </div>
+                <span className="text-sm font-black">95 mg/dL</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="size-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
+                    <span className="material-symbols-outlined">thermostat</span>
+                  </div>
+                  <span className="text-sm font-semibold">Temperature</span>
+                </div>
+                <span className="text-sm font-black">98.6°F</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* AI Action Card */}
-        <div 
-          onClick={() => navigate('/chat')}
-          className="bg-primary text-white p-10 rounded-[40px] shadow-2xl relative overflow-hidden group cursor-pointer"
-        >
-          <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-white/10 transition-all duration-500"></div>
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div className="max-w-xl">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="material-symbols-outlined text-white/70">auto_awesome</span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">Your Health Intelligence</span>
-              </div>
-              <h2 className="serif-font text-4xl mb-4 leading-tight">Need a medical advice or a quick booking?</h2>
-              <p className="text-white/70 text-lg">Our AI is locked in and ready to assist with symptoms, records, or finding the nearest care center.</p>
-            </div>
-            <button className="bg-white text-primary px-8 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all">
-              Chat with AI
+        {/* Recent Chat Sessions */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">forum</span>
+              Recent Sessions
+            </h3>
+            <button
+              onClick={() => setShowAllSessions(true)}
+              className="text-xs font-bold text-primary hover:text-black transition-colors"
+            >
+              View All
             </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+              onClick={() => navigate('/chat?session=1')}
+              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-gray-400">Today</span>
+                <span className="size-2 bg-blue-500 rounded-full"></span>
+              </div>
+              <h4 className="font-bold text-primary mb-2">General checkup followup</h4>
+              <p className="text-sm text-gray-500 line-clamp-2">
+                "I've been feeling much better, but I still have some mild fatigue in the afternoons..."
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-blue-500 px-2 py-1 rounded-lg">Active</span>
+              </div>
+            </div>
+
+            <div
+              onClick={() => navigate('/chat?session=2')}
+              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-gray-400">Yesterday</span>
+                <span className="size-2 bg-green-500 rounded-full"></span>
+              </div>
+              <h4 className="font-bold text-primary mb-2">Lower back pain query</h4>
+              <p className="text-sm text-gray-500 line-clamp-2">
+                "I've been experiencing lower back pain for the past few days, especially when sitting..."
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-green-600 px-2 py-1 rounded-lg">Completed</span>
+              </div>
+            </div>
+
+            <div
+              onClick={() => navigate('/chat?session=3')}
+              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-gray-400">Jan 21</span>
+                <span className="size-2 bg-green-500 rounded-full"></span>
+              </div>
+              <h4 className="font-bold text-primary mb-2">Prescription refill request</h4>
+              <p className="text-sm text-gray-500 line-clamp-2">
+                "I need to refill my blood pressure medication. I'm running low..."
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-green-600 px-2 py-1 rounded-lg">Completed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Health Summary */}
+        <div className="bg-primary text-white p-10 rounded-[40px] shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="material-symbols-outlined text-white/70">analytics</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">Weekly Health Summary</span>
+            </div>
+
+            <h2 className="serif-font text-3xl mb-6 leading-relaxed">
+              This week you've been 12% more active than last week, averaging 4,582 steps per day. Your resting heart rate is steady at 68 bpm, which is within a healthy range.
+            </h2>
+
+            <p className="text-white/70 text-lg leading-relaxed mb-6">
+              You're getting an average of 7.2 hours of sleep per night, and your blood pressure readings have remained stable at 120/80 mmHg. Your hydration could improve — you're only hitting about 48% of your daily water intake goal.
+            </p>
+
+            <p className="text-white/50 text-sm italic">
+              Tip: Try setting hourly reminders to drink water throughout the day to reach your 2.5L goal.
+            </p>
           </div>
         </div>
       </div>
     </div>
+    </>
   );
 };
 

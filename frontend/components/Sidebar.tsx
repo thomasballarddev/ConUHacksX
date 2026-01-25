@@ -65,15 +65,42 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
 
       <div className="mt-4 px-6 flex-1 overflow-y-auto custom-scrollbar">
         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4 px-2">Recent Sessions</p>
-        <div className="space-y-3">
-          <div className="block cursor-pointer group px-2">
-            <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate">General checkup followup</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">2 hours ago</p>
-          </div>
-          <div className="block cursor-pointer group px-2">
-            <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate">Lower back pain query</p>
+        <div className="space-y-1">
+          <NavLink to="/chat?session=1" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">General checkup followup</p>
+              <span className="size-2 bg-blue-500 rounded-full flex-shrink-0"></span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Today</p>
+          </NavLink>
+          <NavLink to="/chat?session=2" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Lower back pain query</p>
+              <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
+            </div>
             <p className="text-[10px] text-gray-400 mt-0.5">Yesterday</p>
-          </div>
+          </NavLink>
+          <NavLink to="/chat?session=3" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Prescription refill request</p>
+              <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Jan 21</p>
+          </NavLink>
+          <NavLink to="/chat?session=4" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Headache symptoms</p>
+              <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Jan 19</p>
+          </NavLink>
+          <NavLink to="/chat?session=5" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Annual physical booking</p>
+              <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Jan 15</p>
+          </NavLink>
         </div>
       </div>
 
