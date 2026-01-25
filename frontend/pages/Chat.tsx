@@ -130,25 +130,25 @@ const Chat: React.FC = () => {
   // Initialize Firestore chat session when user is authenticated
   useEffect(() => {
     if (!user) return;
-    
+
     const initFirestoreChat = async () => {
       try {
         const chatId = await getOrCreateActiveChat(user.uid);
         setFirestoreChatId(chatId);
-        
+
         // Subscribe to messages from Firestore
         const unsubscribe = subscribeToMessages(user.uid, chatId, (firestoreMessages) => {
           if (firestoreMessages.length > 0) {
             setMessages(firestoreMessages.map(m => ({ role: m.role, text: m.text })));
           }
         });
-        
+
         return unsubscribe;
       } catch (error) {
         console.error('Error initializing Firestore chat:', error);
       }
     };
-    
+
     initFirestoreChat();
   }, [user]);
 
@@ -326,12 +326,12 @@ const Chat: React.FC = () => {
       if (data.message) {
         const modelMessage = { role: 'model' as const, text: data.message };
         setMessages(prev => [...prev, modelMessage]);
-        
+
         // Save model message to Firestore
         if (user && firestoreChatId) {
           saveMessage(user.uid, firestoreChatId, modelMessage);
         }
-        
+
         speak(data.message, () => {
           // Auto-restart listening after AI finishes speaking
           setTimeout(() => startListening(), 500);
@@ -348,15 +348,15 @@ const Chat: React.FC = () => {
 
   const handleEmergencyConfirm = async () => {
     setShowEmergency(false);
-    // Call the mock emergency line
-    // In demo, we might just show a "Calling..." UI or use Twilio
-    // For now, let's pretend a call started
+    // Call the emergency line
     setIsCallActive(true);
-    // Trigger backend call
+    setMessages(prev => [...prev, { role: 'model', text: 'Connecting you to emergency services at 438 520 2457...' }]);
+    // Trigger backend call to emergency number
     await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/initiate`, {
       method: 'POST',
       body: JSON.stringify({
         type: 'emergency',
+        phone: '+14385202457',  // Emergency line
         userId: user?.uid // Pass the user ID for emergency calls too
       }),
       headers: { 'Content-Type': 'application/json' }
@@ -587,14 +587,14 @@ const Chat: React.FC = () => {
                       <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
                       <AudioVisualizer audioData={audioData} />
                     </div>
-                    
+
                     {/* Transcript display */}
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] text-gray-800 truncate">
                         {voiceTranscript || <span className="text-gray-400 italic">Listening...</span>}
                       </p>
                     </div>
-                    
+
                     {/* Send button */}
                     <button
                       onClick={() => {
@@ -604,16 +604,15 @@ const Chat: React.FC = () => {
                         }
                       }}
                       disabled={!voiceTranscript.trim()}
-                      className={`size-11 rounded-2xl transition-all flex items-center justify-center ${
-                        voiceTranscript.trim()
-                          ? 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
-                          : 'bg-gray-100 text-gray-400'
-                      }`}
+                      className={`size-11 rounded-2xl transition-all flex items-center justify-center ${voiceTranscript.trim()
+                        ? 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
+                        : 'bg-gray-100 text-gray-400'
+                        }`}
                       title="Send Message"
                     >
                       <span className="material-symbols-outlined">arrow_upward</span>
                     </button>
-                    
+
                     {/* Cancel button */}
                     <button
                       onClick={stopListening}

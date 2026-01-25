@@ -14,10 +14,21 @@ interface PendingWebhook {
 }
 let pendingWebhook: PendingWebhook | null = null;
 
-// POST /call/initiate - Start a clinic call
+// Emergency phone number
+const EMERGENCY_PHONE = '+14385202457';
+
+// POST /call/initiate - Start a clinic call or emergency call
 router.post('/initiate', async (req, res) => {
   try {
-    const { phone, clinic_name, userId } = req.body;
+    const { phone, clinic_name, type, userId } = req.body;
+
+    // Handle emergency calls
+    if (type === 'emergency') {
+      const emergencyPhone = phone || EMERGENCY_PHONE;
+      console.log(`[Call] Initiating EMERGENCY call to ${emergencyPhone}`);
+      const result = await initiateClinicCall(emergencyPhone, 'EMERGENCY - Patient needs immediate assistance', 'Emergency Services');
+      return res.json(result);
+    }
 
     if (!phone) {
       return res.status(400).json({ error: 'Phone is required' });
@@ -55,13 +66,13 @@ router.post('/initiate', async (req, res) => {
 router.post('/respond', async (req, res) => {
   try {
     const { response } = req.body;
-    
+
     if (!response) {
       return res.status(400).json({ error: 'Response is required' });
     }
-    
+
     console.log('[Call] User selected time:', response);
-    
+
     // Resolve the pending webhook if one exists
     if (pendingWebhook) {
       clearTimeout(pendingWebhook.timeout);
@@ -87,7 +98,7 @@ router.post('/respond', async (req, res) => {
 // GET /call/status - Get active call status
 router.get('/status', (req, res) => {
   const status = getActiveCallStatus();
-  
+
   if (status) {
     res.json({
       id: status.id,
@@ -117,15 +128,15 @@ router.post('/show-calendar', async (req, res) => {
   const { slots } = req.body;
   console.log('[Call Webhook] ElevenLabs agent requesting schedule selection');
   console.log('[Call Webhook] Available slots from agent:', slots);
-  
+
   // Parse slots from agent (could be strings or objects)
   const slotsToSend: TimeSlot[] = parseSlots(slots);
-  
+
   // Show calendar to user via WebSocket
   emitShowCalendar(slotsToSend);
   emitCallOnHold('current-call-id');
   console.log('[Call Webhook] Calendar shown to user, waiting for selection...');
-  
+
   // Create a promise that resolves when user selects a time
   const userSelection = await new Promise<string>((resolve) => {
     // Set timeout - if user doesn't respond in 60 seconds, return a fallback
@@ -134,19 +145,19 @@ router.post('/show-calendar', async (req, res) => {
       pendingWebhook = null;
       resolve('the first available appointment slot');
     }, 60000); // 60 second timeout
-    
+
     // Store the resolve function so /respond endpoint can call it
     pendingWebhook = { resolve, timeout };
   });
-  
+
   console.log('[Call Webhook] User selected:', userSelection);
-  
+
   // Resume the call
   emitCallResumed('current-call-id');
-  
+
   // Return the selection to ElevenLabs agent
   // The agent will use this response to tell the receptionist
-  res.json({ 
+  res.json({
     success: true,
     user_selection: userSelection,
     message: `The patient has selected: ${userSelection}. Please confirm this appointment time with the receptionist.`
@@ -162,20 +173,20 @@ router.post('/ask-user', async (req, res) => {
 
   // Show Question Widget to user
   emitAgentNeedsInput({ question });
-  
+
   // Wait for user response (using same mechanism as calendar)
   const userResponse = await new Promise<string>((resolve) => {
     const timeout = setTimeout(() => {
       console.log('[Call Webhook] Timeout waiting for user answer');
       pendingWebhook = null;
       resolve('The user did not provide an answer in time.');
-    }, 60000); 
-    
+    }, 60000);
+
     pendingWebhook = { resolve, timeout };
   });
-  
+
   console.log('[Call Webhook] User answered:', userResponse);
-  
+
   res.json({
     success: true,
     user_response: userResponse,
@@ -188,7 +199,7 @@ function parseSlots(slots: any): TimeSlot[] {
   if (!slots || !Array.isArray(slots)) {
     return [];
   }
-  
+
   const parsedSlots: TimeSlot[] = [];
 
   for (const s of slots) {
@@ -198,22 +209,22 @@ function parseSlots(slots: any): TimeSlot[] {
       const dayMatch = s.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
       const timeMatch = s.match(/(\d{1,2}):?(\d{2})?\s*([ap]\.?m\.?)/i);
       const today = new Date();
-      
-      if (timeMatch) {
-         let hour = parseInt(timeMatch[1]);
-         const minute = timeMatch[2] || '00';
-         const meridian = timeMatch[3].toLowerCase().includes('a') ? 'AM' : 'PM';
-         
-         // Normalize 1-digit hour
-         let timeStr = '';
-         if (hour < 10 && hour > 0) timeStr = `0${hour}:${minute} ${meridian}`;
-         else timeStr = `${hour}:${minute} ${meridian}`;
 
-         parsedSlots.push({
-           day: dayMatch ? dayMatch[1].substring(0, 3).toUpperCase() : days[today.getDay()],
-           date: String(today.getDate() + 1),
-           time: timeStr
-         });
+      if (timeMatch) {
+        let hour = parseInt(timeMatch[1]);
+        const minute = timeMatch[2] || '00';
+        const meridian = timeMatch[3].toLowerCase().includes('a') ? 'AM' : 'PM';
+
+        // Normalize 1-digit hour
+        let timeStr = '';
+        if (hour < 10 && hour > 0) timeStr = `0${hour}:${minute} ${meridian}`;
+        else timeStr = `${hour}:${minute} ${meridian}`;
+
+        parsedSlots.push({
+          day: dayMatch ? dayMatch[1].substring(0, 3).toUpperCase() : days[today.getDay()],
+          date: String(today.getDate() + 1),
+          time: timeStr
+        });
       } else {
         console.warn(`[Call] Could not parse time from slot string: "${s}"`);
       }
@@ -221,7 +232,7 @@ function parseSlots(slots: any): TimeSlot[] {
       parsedSlots.push(s);
     }
   }
-  
+
   return parsedSlots;
 }
 

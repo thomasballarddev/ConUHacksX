@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, ChatSession, SchemaType, FunctionDeclaration } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import { initiateClinicCall, getActiveCallStatus, sendResponseToCall } from './elevenlabs-call.js';
-import { emitShowClinics } from './websocket.js';
+import { emitShowClinics, emitEmergencyTrigger } from './websocket.js';
 import { clinics } from '../data/clinics.js';
 import { addMessage, getConversationText, getCurrentChat, debugState, getAllMessages } from './chatStorage.js';
 
@@ -25,8 +25,21 @@ const SYSTEM_PROMPT = `You are a helpful AI health assistant for Health.me. You 
 - Providing health tips and wellness advice
 - Summarizing their health profile based on conversation history
 
-Be empathetic, professional, and concise. If a user describes a medical emergency,
-advise them to call emergency services immediately.
+Be empathetic, professional, and concise.
+
+CRITICAL EMERGENCY PROTOCOL:
+If a user describes ANY of the following life-threatening symptoms, you MUST IMMEDIATELY use the trigger_emergency function:
+- Chest pain with difficulty breathing or shortness of breath
+- Signs of stroke: face drooping, arm weakness, slurred speech, confusion
+- Severe allergic reaction: throat swelling, can't breathe, hives spreading rapidly
+- Uncontrolled or heavy bleeding
+- Loss of consciousness or unresponsive
+- Severe head injury or trauma
+- Suicidal thoughts or self-harm intentions
+- Choking or inability to breathe
+- Severe abdominal pain with fever
+- Signs of heart attack: crushing chest pain, pain radiating to arm/jaw
+DO NOT HESITATE - trigger emergency immediately for these situations. The user will have 7 seconds to cancel if it's not an emergency.
 
 When a user describes symptoms and needs a doctor appointment:
 1. First show them nearby clinics using the show_nearby_clinics function
@@ -93,6 +106,20 @@ const functionDeclarations: FunctionDeclaration[] = [
       properties: {},
       required: []
     }
+  },
+  {
+    name: "trigger_emergency",
+    description: "CRITICAL: Trigger emergency services countdown for life-threatening situations. Use this ONLY when the user describes symptoms indicating immediate danger to life such as: chest pain with difficulty breathing, signs of stroke (face drooping, arm weakness, speech difficulty), severe allergic reaction (throat closing, can't breathe), uncontrolled bleeding, loss of consciousness, severe head injury, suicidal ideation, or any situation where waiting could result in death or permanent harm. This will show a 7-second countdown before calling emergency services at 438 520 2457.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        reason: {
+          type: SchemaType.STRING,
+          description: "Brief description of why emergency services are being called"
+        }
+      },
+      required: ["reason"]
+    }
   }
 ];
 
@@ -134,6 +161,13 @@ async function executeFunctionCall(name: string, args: Record<string, unknown>):
     case "get_health_profile": {
       const healthProfile = await generateHealthProfile();
       return healthProfile;
+    }
+
+    case "trigger_emergency": {
+      const reason = args.reason as string || 'Critical medical emergency detected';
+      console.log(`[Gemini] EMERGENCY TRIGGERED: ${reason}`);
+      emitEmergencyTrigger();
+      return `EMERGENCY SEQUENCE INITIATED. A 7-second countdown is now displayed to the user before calling emergency services at 438 520 2457. Reason: ${reason}. Stay with the user and provide calm reassurance while they wait.`;
     }
 
     default:
