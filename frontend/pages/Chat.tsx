@@ -225,7 +225,7 @@ const Chat: React.FC = () => {
       {/* Shared Right Sidebar */}
       <div 
         className={`bg-white border-l border-black/5 shadow-xl transition-all duration-500 ease-in-out flex flex-col ${
-          showRightPanel ? 'w-[440px] translate-x-0' : 'w-0 translate-x-full opacity-0'
+          showRightPanel ? 'w-full lg:w-1/2 translate-x-0' : 'w-0 translate-x-full opacity-0'
         }`}
       >
         <div className="flex-1 flex flex-col h-full overflow-hidden">

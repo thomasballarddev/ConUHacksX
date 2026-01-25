@@ -7,8 +7,8 @@ interface LiveCallPanelProps {
 
 const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onClose, minimized = false }) => {
   return (
-    <div className={`bg-soft-cream border-l border-black/5 flex flex-col overflow-hidden animate-in slide-in-from-right duration-500 shadow-xl z-20 w-full transition-all ${
-      minimized ? 'flex-shrink-0 border-t border-black/5' : 'h-full md:w-[400px] lg:w-[480px]'
+    <div className={`border-l border-black/5 flex flex-col overflow-hidden animate-in slide-in-from-right duration-500 shadow-xl z-20 w-full transition-all ${
+      minimized ? 'flex-shrink-0 border-t border-black/5 bg-red-600' : 'h-full bg-soft-cream'
     }`}>
       {/* Call Header */}
       {!minimized && (
@@ -71,7 +71,7 @@ const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onClose, minimized = fals
       )}
 
       {/* Call Footer / Minimized View */}
-      <div className={`bg-white ${minimized ? 'p-4 flex items-center justify-between gap-4' : 'p-6 md:p-8 border-t border-black/5'}`}>
+      <div className={`${minimized ? 'p-4 flex items-center justify-between gap-4 bg-red-600' : 'p-6 md:p-8 border-t border-black/5 bg-white'}`}>
          {!minimized && (
            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -85,21 +85,21 @@ const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onClose, minimized = fals
          )}
          
          {minimized && (
-           <div className="flex items-center gap-3">
-             <div className="size-10 bg-green-50 rounded-full flex items-center justify-center border border-green-100 flex-shrink-0">
-                <span className="size-2 rounded-full bg-green-500 pulse-green"></span>
+           <div className="flex items-center gap-4 flex-1">
+             <div className="size-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0 animate-pulse">
+                <span className="material-symbols-outlined text-white text-xl">phone_in_talk</span>
              </div>
              <div>
-               <p className="text-xs font-bold text-primary">Relay Call Active</p>
-               <p className="text-[10px] text-gray-400 font-mono">02:14</p>
+               <p className="text-sm font-black text-white">Relay Call Active</p>
+               <p className="text-[11px] text-white/80 font-mono mt-0.5">Recording • 02:14</p>
              </div>
            </div>
          )}
 
          <button 
            onClick={onClose}
-           className={`bg-red-600 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-100 hover:bg-red-700 transition-all active:scale-95 ${
-             minimized ? 'px-6 py-3 text-xs' : 'w-full py-3.5'
+           className={`bg-white text-red-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg hover:bg-gray-100 transition-all active:scale-95 ${
+             minimized ? 'px-6 py-3 text-xs shadow-none' : 'w-full py-3.5 shadow-red-100'
            }`}
          >
            <span className="material-symbols-outlined text-lg">call_end</span>
