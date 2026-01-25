@@ -58,22 +58,25 @@ export async function initiateClinicCall(phoneNumber: string, reason: string, cl
   
   // Use the ElevenLabs Twilio outbound call API
   // This initiates an actual phone call using Twilio integration
+  const payload = {
+    agent_id: AGENT_ID,
+    agent_phone_number_id: TWILIO_PHONE_NUMBER,
+    to_number: phoneNumber,
+    first_message: `Hello, this is the Health.me AI assistant calling on behalf of a patient. The patient has been experiencing ${reason} and would like to schedule an appointment. Do you have any available slots?`,
+    dynamic_variables: {
+      clinic_name: clinicName,
+      patient_symptoms: reason
+    }
+  };
+  console.log('[ElevenLabs-Call] Sending payload:', JSON.stringify(payload, null, 2));
+
   const outboundCallResponse = await fetch('https://api.elevenlabs.io/v1/convai/twilio/outbound-call', {
     method: 'POST',
     headers: {
       'xi-api-key': API_KEY,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      agent_id: AGENT_ID,
-      agent_phone_number_id: TWILIO_PHONE_NUMBER,
-      to_number: phoneNumber,
-      first_message: `Hello, this is the Health.me AI assistant calling on behalf of a patient. The patient has been experiencing ${reason} and would like to schedule an appointment. Do you have any available slots?`,
-      dynamic_variables: {
-        clinic_name: clinicName,
-        patient_symptoms: reason
-      }
-    })
+    body: JSON.stringify(payload)
   });
 
   if (!outboundCallResponse.ok) {
