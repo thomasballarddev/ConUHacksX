@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
 import Map, { Marker, NavigationControl, MapRef, Source, Layer } from "react-map-gl/mapbox";
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useLocation } from '../contexts/LocationContext';
 
@@ -229,9 +230,10 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
         // Fit map to show the route
         if (mapRef.current) {
           const coordinates = route.geometry.coordinates;
+          // Use imported mapboxgl
           const bounds = coordinates.reduce(
             (bounds: any, coord: number[]) => bounds.extend(coord),
-            new (window as any).mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+            new mapboxgl.LngLatBounds(coordinates[0] as [number, number], coordinates[0] as [number, number])
           );
           mapRef.current.fitBounds(bounds, { padding: 50, pitch: 45, bearing: -10 });
         }
@@ -309,7 +311,7 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
             mapboxAccessToken={MAPBOX_TOKEN}
             onLoad={onMapLoad}
             reuseMaps
-            terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
+            // Removed terrain prop to avoid "Source mapbox-dem cannot be removed" error during widget switch
             fog={{
               'range': [0.8, 8],
               'color': '#dc9f9f',
@@ -321,45 +323,7 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
           >
             <NavigationControl position="bottom-right" />
 
-            <Source
-              id="mapbox-dem"
-              type="raster-dem"
-              url="mapbox://mapbox.mapbox-terrain-dem-v1"
-              tileSize={512}
-              maxzoom={14}
-            />
-
-            {/* 3D Buildings Layer */}
-            <Layer
-              id="3d-buildings"
-              source="composite"
-              source-layer="building"
-              filter={['==', 'extrude', 'true']}
-              type="fill-extrusion"
-              minzoom={15}
-              paint={{
-                'fill-extrusion-color': '#aaa',
-                'fill-extrusion-height': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  15,
-                  0,
-                  15.05,
-                  ['get', 'height']
-                ],
-                'fill-extrusion-base': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  15,
-                  0,
-                  15.05,
-                  ['get', 'min_height']
-                ],
-                'fill-extrusion-opacity': 0.6
-              }}
-            />
+            {/* Removed Source mapbox-dem and Layer 3d-buildings to simplify and prevent unmount crashes for now */}
 
             {/* Route line */}
             {routeGeoJson && (
