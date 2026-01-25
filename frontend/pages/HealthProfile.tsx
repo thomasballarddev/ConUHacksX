@@ -14,13 +14,13 @@ const HealthProfile: React.FC = () => {
 
   return (
     <div className="px-8 pb-32">
-      <div className="w-full relative rounded-[24px] p-6 mb-8 overflow-hidden shadow-lg text-white">
+      <div className="w-full relative rounded-[24px] p-6 mb-8 overflow-hidden shadow-lg text-white min-h-[250px] flex flex-col justify-end">
         <div className="absolute inset-0">
           <img src={cycling2} alt="Cycling Hero" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/20"></div>
         </div>
         
-        <div className="max-w-6xl mx-auto relative z-10 flex flex-col md:flex-row justify-between items-end gap-4">
+        <div className="max-w-6xl mx-auto relative z-10 flex flex-col md:flex-row justify-between items-end gap-4 flex-1 w-full">
           <div>
             <h1 className="serif-font text-3xl mb-2 font-medium tracking-tight">Health Profile</h1>
             <p className="text-white/80 text-sm max-w-xl font-light leading-relaxed">
