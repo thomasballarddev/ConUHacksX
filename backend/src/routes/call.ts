@@ -139,28 +139,43 @@ router.post('/show-calendar', async (req, res) => {
 // Helper function to parse slots from various formats
 function parseSlots(slots: any): TimeSlot[] {
   if (!slots || !Array.isArray(slots)) {
-    return [
-      { day: 'TUE', date: '28', time: '02:00 PM' },
-      { day: 'WED', date: '29', time: '03:00 PM' }
-    ];
+    return [];
   }
   
-  return slots.map((s: any) => {
+  const parsedSlots: TimeSlot[] = [];
+
+  for (const s of slots) {
     if (typeof s === 'string') {
       // Parse string like "Tuesday at 2pm"
       const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
       const dayMatch = s.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
-      const timeMatch = s.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
+      const timeMatch = s.match(/(\d{1,2}):?(\d{2})?\s*([ap]\.?m\.?)/i);
       const today = new Date();
       
-      return {
-        day: dayMatch ? dayMatch[1].substring(0, 3).toUpperCase() : days[today.getDay()],
-        date: String(today.getDate() + 1),
-        time: timeMatch ? timeMatch[0].toUpperCase() : '02:00 PM'
-      };
+      if (timeMatch) {
+         let hour = parseInt(timeMatch[1]);
+         const minute = timeMatch[2] || '00';
+         const meridian = timeMatch[3].toLowerCase().includes('a') ? 'AM' : 'PM';
+         
+         // Normalize 1-digit hour
+         let timeStr = '';
+         if (hour < 10 && hour > 0) timeStr = `0${hour}:${minute} ${meridian}`;
+         else timeStr = `${hour}:${minute} ${meridian}`;
+
+         parsedSlots.push({
+           day: dayMatch ? dayMatch[1].substring(0, 3).toUpperCase() : days[today.getDay()],
+           date: String(today.getDate() + 1),
+           time: timeStr
+         });
+      } else {
+        console.warn(`[Call] Could not parse time from slot string: "${s}"`);
+      }
+    } else {
+      parsedSlots.push(s);
     }
-    return s;
-  });
+  }
+  
+  return parsedSlots;
 }
 
 // Webhook for Agent: "Resume Call"
