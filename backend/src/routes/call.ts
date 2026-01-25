@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger } from '../services/websocket.js';
+import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger, emitAgentNeedsInput, emitAgentInputReceived } from '../services/websocket.js';
 import { initiateClinicCall, sendResponseToCall, getActiveCallStatus } from '../services/elevenlabs-call.js';
 import { getPatientSymptoms } from '../services/gemini.js';
 import { TimeSlot } from '../types/index.js';
@@ -51,6 +51,7 @@ router.post('/respond', async (req, res) => {
       clearTimeout(pendingWebhook.timeout);
       pendingWebhook.resolve(response);
       pendingWebhook = null;
+      emitAgentInputReceived();
       res.json({ status: 'sent', message: 'Response sent to ElevenLabs agent' });
     } else {
       // Fallback: try sending via conversation API
@@ -133,6 +134,36 @@ router.post('/show-calendar', async (req, res) => {
     success: true,
     user_selection: userSelection,
     message: `The patient has selected: ${userSelection}. Please confirm this appointment time with the receptionist.`
+  });
+});
+
+/**
+ * WEBHOOK: Agent asks the user a question via UI overlay
+ */
+router.post('/ask-user', async (req, res) => {
+  const { question } = req.body;
+  console.log('[Call Webhook] Agent asking user:', question);
+
+  // Show Question Widget to user
+  emitAgentNeedsInput({ question });
+  
+  // Wait for user response (using same mechanism as calendar)
+  const userResponse = await new Promise<string>((resolve) => {
+    const timeout = setTimeout(() => {
+      console.log('[Call Webhook] Timeout waiting for user answer');
+      pendingWebhook = null;
+      resolve('The user did not provide an answer in time.');
+    }, 60000); 
+    
+    pendingWebhook = { resolve, timeout };
+  });
+  
+  console.log('[Call Webhook] User answered:', userResponse);
+  
+  res.json({
+    success: true,
+    user_response: userResponse,
+    message: `The user answered: "${userResponse}". Relay this exactly to the receptionist.`
   });
 });
 

@@ -82,3 +82,17 @@ export function emitError(message: string) {
     io.emit('error', message);
   }
 }
+
+export function emitAgentNeedsInput(data: { question: string; context?: string }) {
+  if (io) {
+    console.log('[WebSocket] Emitting agent_needs_input');
+    io.emit('agent_needs_input', data);
+  }
+}
+
+export function emitAgentInputReceived() {
+  if (io) {
+    console.log('[WebSocket] Emitting agent_input_received');
+    io.emit('agent_input_received');
+  }
+}

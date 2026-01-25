@@ -49,6 +49,8 @@ export interface ServerToClientEvents {
   emergency_trigger: () => void;
   chat_response: (message: ChatMessage) => void;
   error: (message: string) => void;
+  agent_needs_input: (data: { question: string; context?: string }) => void;
+  agent_input_received: () => void;
 }
 
 export interface ClientToServerEvents {

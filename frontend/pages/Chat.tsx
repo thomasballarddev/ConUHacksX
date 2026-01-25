@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import AppointmentScheduler from '../components/AppointmentScheduler';
 import LiveCallPanel from '../components/LiveCallPanel';
 import LocationWidget from '../components/LocationWidget';
+import QuestionWidget from '../components/QuestionWidget';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface Message {
@@ -113,7 +114,7 @@ const Chat: React.FC = () => {
   const [isCompleted, setIsCompleted] = useState(false);
 
   // Widget State
-  const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule'>('none');
+  const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule' | 'question'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -212,6 +213,7 @@ const Chat: React.FC = () => {
       setAgentNeedsInput(true);
       setAgentQuestion(data.question);
       setAgentContext(data.context || 'The receptionist is asking for this information.');
+      setActiveWidget('question'); // Switch to question widget
     });
 
     // Agent received user input, clear the prompt
@@ -352,12 +354,13 @@ const Chat: React.FC = () => {
     setTranscript(prev => [...prev, `User: ${response}`]);
 
     try {
-      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/user-response`, {
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ response })
       });
       // The socket will emit 'agent_input_received' to clear the prompt
+      setActiveWidget('none');
     } catch (error) {
       console.error('Failed to send user response:', error);
     }
@@ -561,6 +564,13 @@ const Chat: React.FC = () => {
                   />
                 </div>
               )}
+              {activeWidget === 'question' && (
+                <QuestionWidget
+                  onClose={() => { /* Cannot close question widget, user must answer */ }}
+                  onSubmit={handleAgentInputResponse}
+                  question={agentQuestion}
+                />
+              )}
             </div>
           )}
 
@@ -570,11 +580,8 @@ const Chat: React.FC = () => {
               <LiveCallPanel
                 onClose={() => setIsCallActive(false)}
                 minimized={activeWidget !== 'none'}
+                minimized={activeWidget !== 'none'}
                 transcript={transcript}
-                agentNeedsInput={agentNeedsInput}
-                agentQuestion={agentQuestion}
-                agentContext={agentContext}
-                onUserResponse={handleAgentInputResponse}
               />
             </div>
           )}
