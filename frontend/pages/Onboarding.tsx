@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import healthImage from '../assets/health.jpg';
+import demoProfileData from '../assets/demoProfile.json';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -39,6 +40,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [isAnimating, setIsAnimating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showAutofillToast, setShowAutofillToast] = useState(false);
   
   const [profile, setProfile] = useState<UserProfile>({
     personalInfo: { fullName: '', dateOfBirth: '', gender: '' },
@@ -53,6 +55,48 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const totalSteps = 6;
   const progressPercentage = ((currentStep + 1) / totalSteps) * 100;
+
+  // Shift+A autofill handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        autofillCurrentStep();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentStep]);
+
+  const autofillCurrentStep = () => {
+    const demo = demoProfileData as UserProfile;
+    
+    switch (currentStep) {
+      case 0:
+        setProfile(prev => ({ ...prev, personalInfo: demo.personalInfo }));
+        break;
+      case 1:
+        setProfile(prev => ({ ...prev, physicalStats: demo.physicalStats }));
+        break;
+      case 2:
+        setProfile(prev => ({ ...prev, bloodType: demo.bloodType }));
+        break;
+      case 3:
+        setProfile(prev => ({ ...prev, allergies: demo.allergies }));
+        break;
+      case 4:
+        setProfile(prev => ({ ...prev, medicalConditions: demo.medicalConditions }));
+        break;
+      case 5:
+        setProfile(prev => ({ ...prev, emergencyContact: demo.emergencyContact }));
+        break;
+    }
+    
+    // Show toast notification
+    setShowAutofillToast(true);
+    setTimeout(() => setShowAutofillToast(false), 2000);
+  };
 
   const stepTitles = [
     { icon: 'person', title: 'Personal Information', subtitle: 'Let\'s start with the basics' },
@@ -441,6 +485,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               }}
             />
           ))}
+        </div>
+      )}
+
+      {/* Autofill Toast */}
+      {showAutofillToast && (
+        <div className="fixed top-6 right-6 z-50 animate-slideIn">
+          <div className="bg-primary text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3">
+            <span className="material-symbols-outlined text-green-400">auto_fix_high</span>
+            <span className="font-bold text-sm">Demo data autofilled!</span>
+            <span className="text-xs text-white/60 ml-2">Shift+A</span>
+          </div>
         </div>
       )}
 

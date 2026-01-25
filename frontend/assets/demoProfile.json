@@ -1,0 +1,22 @@
+{
+  "personalInfo": {
+    "fullName": "Alex Thompson",
+    "dateOfBirth": "1992-03-15",
+    "gender": "Male"
+  },
+  "physicalStats": {
+    "height": "5'11\"",
+    "weight": "165"
+  },
+  "bloodType": "A+",
+  "allergies": ["Peanuts", "Penicillin", "Dust Mites"],
+  "medicalConditions": {
+    "conditions": ["Asthma", "Anxiety"],
+    "notes": "Mild seasonal allergies, uses inhaler as needed."
+  },
+  "emergencyContact": {
+    "name": "Sarah Thompson",
+    "relationship": "Spouse",
+    "phone": "(514) 555-0123"
+  }
+}
