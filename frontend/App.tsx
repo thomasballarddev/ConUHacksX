@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import HealthProfile from './pages/HealthProfile';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
+import SignUp from './pages/SignUp';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -34,6 +35,7 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
+          <Route path="/signup" element={<SignUp onSignUp={() => setIsAuthenticated(true)} />} />
           <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
           <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
           <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />

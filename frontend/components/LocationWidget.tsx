@@ -49,7 +49,93 @@ const CLINIC_DATA = [
     distance: 1.8,
     rating: 4.8,
     phone: '(514) 612-2430'
+  },
+  {
+    id: 'clinic-4',
+    name: 'Clinique Santé MD',
+    address: '1411 Peel St, Montreal, Quebec H3A 1S5',
+    distance: 0.4,
+    rating: 4.2,
+    phone: '(514) 843-1234'
+  },
+  {
+    id: 'clinic-5',
+    name: 'Centre Médical Westmount',
+    address: '5025 Sherbrooke St W, Westmount, Quebec H3Z 1H2',
+    distance: 2.1,
+    rating: 4.6,
+    phone: '(514) 481-0268'
+  },
+  {
+    id: 'clinic-6',
+    name: 'Clinique Médicale 1851',
+    address: '1851 Sherbrooke St E, Montreal, Quebec H2K 1B4',
+    distance: 3.5,
+    rating: 3.9,
+    phone: '(514) 524-7548'
+  },
+  {
+    id: 'clinic-7',
+    name: 'Clinique Médicale du Plateau',
+    address: '1315 Mont-Royal Ave E, Montreal, Quebec H2J 1Y6',
+    distance: 2.8,
+    rating: 4.1,
+    phone: '(514) 521-1223'
+  },
+  {
+    id: 'clinic-8',
+    name: 'Clinique Médicale Métro',
+    address: '1844 Rue Sainte-Catherine O, Montreal, Quebec H3H 1M1',
+    distance: 0.2,
+    rating: 3.8,
+    phone: '(514) 932-2334'
+  },
+  {
+    id: 'clinic-9',
+    name: 'Westmount Square Health Group',
+    address: '1 Westmount Sq, Westmount, Quebec H3Z 2P9',
+    distance: 1.5,
+    rating: 4.9,
+    phone: '(514) 934-2334'
+  },
+  {
+    id: 'clinic-10',
+    name: 'Rockland MD',
+    address: '100 Chemin Rockland, Mont-Royal, Quebec H3P 2V9',
+    distance: 4.2,
+    rating: 4.7,
+    phone: '(514) 341-2555'
+  },
+  {
+    id: 'clinic-11',
+    name: 'Clinique Médicale Greene',
+    address: '1241 Greene Ave, Westmount, Quebec H3Z 2A4',
+    distance: 1.6,
+    rating: 4.4,
+    phone: '(514) 932-1111'
+  },
+  {
+    id: 'clinic-12',
+    name: 'Medi-Club',
+    address: '2155 Guy St #500, Montreal, Quebec H3H 2R9',
+    distance: 0.6,
+    rating: 3.5,
+    phone: '(514) 935-8555'
   }
+];
+
+// Random landmarks to make the map feel alive
+const LANDMARK_DATA = [
+  { id: 'l1', type: 'cafe', name: 'Café Myriade', lat: 45.4948, lng: -73.5785 },
+  { id: 'l2', type: 'gym', name: 'Nautilus Plus', lat: 45.4960, lng: -73.5770 },
+  { id: 'l3', type: 'park', name: 'Dorchester Square', lat: 45.5005, lng: -73.5710 },
+  { id: 'l4', type: 'pharmacy', name: 'Jean Coutu', lat: 45.4935, lng: -73.5765 },
+  { id: 'l5', type: 'cafe', name: 'Starbucks', lat: 45.4975, lng: -73.5780 },
+  { id: 'l6', type: 'gym', name: 'Econofitness', lat: 45.4925, lng: -73.5800 },
+  { id: 'l7', type: 'park', name: 'Place du Canada', lat: 45.4990, lng: -73.5720 },
+  { id: 'l8', type: 'cafe', name: 'Humble Lion', lat: 45.5030, lng: -73.5750 },
+  { id: 'l9', type: 'pharmacy', name: 'Pharmaprix', lat: 45.4950, lng: -73.5730 },
+  { id: 'l10', type: 'gym', name: 'YMCA Centre-ville', lat: 45.5010, lng: -73.5745 }
 ];
 
 const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) => {
@@ -69,6 +155,7 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
       setIsLoading(true);
       const geocodedClinics: Clinic[] = [];
       
+      // Process in chunks to avoid rate limits
       for (const clinic of CLINIC_DATA) {
         try {
           const response = await fetch(
@@ -87,6 +174,8 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
         } catch (error) {
           console.error(`Error geocoding ${clinic.name}:`, error);
         }
+        // Small delay
+        await new Promise(r => setTimeout(r, 50));
       }
       
       setClinics(geocodedClinics);
@@ -143,7 +232,7 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
             (bounds: any, coord: number[]) => bounds.extend(coord),
             new (window as any).mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
           );
-          mapRef.current.fitBounds(bounds, { padding: 50 });
+          mapRef.current.fitBounds(bounds, { padding: 50, pitch: 45, bearing: -10 });
         }
       }
     } catch (error) {
@@ -161,6 +250,26 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
   const handleConfirmSelection = () => {
     if (onSelect) {
       onSelect();
+    }
+  };
+
+  const getLandmarkIcon = (type: string) => {
+    switch (type) {
+      case 'cafe': return 'local_cafe';
+      case 'gym': return 'fitness_center';
+      case 'park': return 'park';
+      case 'pharmacy': return 'medication';
+      default: return 'place';
+    }
+  };
+
+  const getLandmarkColor = (type: string) => {
+    switch (type) {
+      case 'cafe': return 'text-amber-600 bg-amber-50';
+      case 'gym': return 'text-purple-600 bg-purple-50';
+      case 'park': return 'text-green-600 bg-green-50';
+      case 'pharmacy': return 'text-teal-600 bg-teal-50';
+      default: return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -189,16 +298,67 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
             initialViewState={{
               longitude: mapCenter.longitude,
               latitude: mapCenter.latitude,
-              zoom: 14
+              zoom: 15.5,
+              pitch: 60,
+              bearing: -17.6
             }}
             style={{width: '100%', height: '100%'}}
-            mapStyle="mapbox://styles/mapbox/light-v11"
+            mapStyle="mapbox://styles/mapbox/streets-v12"
             mapboxAccessToken={MAPBOX_TOKEN}
             onLoad={onMapLoad}
             reuseMaps
+            terrain={{source: 'mapbox-dem', exaggeration: 1.5}}
+            fog={{
+              'range': [0.8, 8],
+              'color': '#dc9f9f',
+              'horizon-blend': 0.5,
+              'high-color': '#245bde',
+              'space-color': '#333',
+              'star-intensity': 0.15
+            }}
           >
             <NavigationControl position="bottom-right" />
             
+            <Source
+              id="mapbox-dem"
+              type="raster-dem"
+              url="mapbox://mapbox.mapbox-terrain-dem-v1"
+              tileSize={512}
+              maxzoom={14}
+            />
+
+            {/* 3D Buildings Layer */}
+            <Layer
+              id="3d-buildings"
+              source="composite"
+              source-layer="building"
+              filter={['==', 'extrude', 'true']}
+              type="fill-extrusion"
+              minzoom={15}
+              paint={{
+                'fill-extrusion-color': '#aaa',
+                'fill-extrusion-height': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'height']
+                ],
+                'fill-extrusion-base': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'min_height']
+                ],
+                'fill-extrusion-opacity': 0.6
+              }}
+            />
+
             {/* Route line */}
             {routeGeoJson && (
               <Source id="route" type="geojson" data={routeGeoJson}>
@@ -213,6 +373,20 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
                 />
               </Source>
             )}
+
+            {/* Ambient Landmarks */}
+            {LANDMARK_DATA.map((landmark) => (
+              <Marker 
+                key={landmark.id} 
+                longitude={landmark.lng} 
+                latitude={landmark.lat} 
+                anchor="bottom"
+              >
+                <div className={`p-1.5 rounded-full border border-white shadow-sm opacity-90 scale-75 hover:scale-100 transition-transform ${getLandmarkColor(landmark.type)}`}>
+                  <span className="material-symbols-outlined text-sm">{getLandmarkIcon(landmark.type)}</span>
+                </div>
+              </Marker>
+            ))}
             
             {/* User's location marker */}
             <Marker longitude={mapCenter.longitude} latitude={mapCenter.latitude} anchor="bottom">

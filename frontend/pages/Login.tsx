@@ -97,7 +97,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </form>
 
           <p className="mt-8 text-center text-[13px] text-gray-500">
-            Don't have an account? <a href="#" className="font-bold text-primary hover:underline">Sign up</a>
+            Don't have an account? <a href="#/signup" className="font-bold text-primary hover:underline">Sign up</a>
           </p>
         </div>
       </div>
