@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
           <NavLink
             to="/chat"
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
+              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-95 ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
             }
           >
             <span className="material-symbols-outlined text-xl">chat_bubble</span>
@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
+              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-95 ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
             }
           >
             <span className="material-symbols-outlined text-xl">home</span>
@@ -52,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
           <NavLink
             to="/calendar"
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
+              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-95 ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
             }
           >
             <span className="material-symbols-outlined text-xl">calendar_month</span>
@@ -62,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
           <NavLink
             to="/profile"
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
+              `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-95 ${isActive ? 'bg-white shadow-sm text-primary font-medium border border-black/5' : 'text-gray-600 hover:bg-black/5'}`
             }
           >
             <span className="material-symbols-outlined text-xl">person</span>
@@ -74,35 +74,35 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
       <div className="mt-4 px-6 flex-1 overflow-y-auto custom-scrollbar">
         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4 px-2">Recent Sessions</p>
         <div className="space-y-1">
-          <NavLink to="/chat?session=1" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+          <NavLink to="/chat?session=1" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-95">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">General checkup followup</p>
               <span className="size-2 bg-blue-500 rounded-full flex-shrink-0"></span>
             </div>
             <p className="text-[10px] text-gray-400 mt-0.5">Today</p>
           </NavLink>
-          <NavLink to="/chat?session=2" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+          <NavLink to="/chat?session=2" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-95">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Lower back pain query</p>
               <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
             </div>
             <p className="text-[10px] text-gray-400 mt-0.5">Yesterday</p>
           </NavLink>
-          <NavLink to="/chat?session=3" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+          <NavLink to="/chat?session=3" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-95">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Prescription refill request</p>
               <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
             </div>
             <p className="text-[10px] text-gray-400 mt-0.5">Jan 21</p>
           </NavLink>
-          <NavLink to="/chat?session=4" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+          <NavLink to="/chat?session=4" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-95">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Headache symptoms</p>
               <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
             </div>
             <p className="text-[10px] text-gray-400 mt-0.5">Jan 19</p>
           </NavLink>
-          <NavLink to="/chat?session=5" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+          <NavLink to="/chat?session=5" className="block cursor-pointer group p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-95">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 group-hover:text-primary transition-colors truncate font-medium">Annual physical booking</p>
               <span className="size-2 bg-green-500 rounded-full flex-shrink-0"></span>
@@ -116,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
         <NavLink
           to="/settings"
           className={({ isActive }) =>
-            `w-full flex items-center space-x-3 px-2 py-2 rounded-xl transition-colors ${isActive ? 'text-primary font-medium' : 'text-gray-500 hover:text-primary'}`
+            `w-full flex items-center space-x-3 px-2 py-2 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-95 ${isActive ? 'text-primary font-medium' : 'text-gray-500 hover:text-primary'}`
           }
         >
           <span className="material-symbols-outlined">settings</span>
@@ -124,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
         </NavLink>
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center space-x-3 bg-white border border-black/5 text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 py-3 rounded-2xl transition-all shadow-sm font-bold text-sm"
+          className="w-full flex items-center justify-center space-x-3 bg-white border border-black/5 text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 py-3 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-sm font-bold text-sm"
         >
           <span className="material-symbols-outlined text-lg">logout</span>
           <span>Sign Out</span>

@@ -31,7 +31,7 @@ const Dashboard: React.FC = () => {
               <div
                 key={session.id}
                 onClick={() => { setShowAllSessions(false); navigate(`/chat?session=${session.id}`); }}
-                className="bg-gray-50 p-4 rounded-2xl border border-black/5 hover:bg-white hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+                className="bg-gray-50 p-4 rounded-2xl border border-black/5 hover:bg-white hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-bold text-primary">{session.title}</h4>
@@ -77,7 +77,7 @@ const Dashboard: React.FC = () => {
                 Daily Health Summary
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-blue-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-blue-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
                       <span className="material-symbols-outlined">water_drop</span>
@@ -86,7 +86,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-sm font-black text-slate-800">1.2L / 2.5L</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-green-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-green-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-green-50 rounded-xl flex items-center justify-center text-green-500">
                       <span className="material-symbols-outlined">directions_walk</span>
@@ -95,7 +95,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-sm font-black text-slate-800">4,582 steps</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-red-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-red-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-red-50 rounded-xl flex items-center justify-center text-red-500">
                       <span className="material-symbols-outlined">favorite</span>
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-sm font-black text-slate-800">72 bpm</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-purple-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-purple-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-500">
                       <span className="material-symbols-outlined">bedtime</span>
@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-sm font-black text-slate-800">7h 23m</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-orange-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-orange-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500">
                       <span className="material-symbols-outlined">local_fire_department</span>
@@ -122,7 +122,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-sm font-black text-slate-800">1,847 kcal</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-teal-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-teal-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-500">
                       <span className="material-symbols-outlined">speed</span>
@@ -131,7 +131,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-sm font-black text-slate-800">120/80</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-yellow-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-yellow-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600">
                       <span className="material-symbols-outlined">glucose</span>
@@ -140,7 +140,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="text-sm font-black text-slate-800">95 mg/dL</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-indigo-200 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl shadow-sm border border-black/5 hover:border-indigo-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center space-x-4">
                     <div className="size-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
                       <span className="material-symbols-outlined">thermostat</span>
@@ -171,7 +171,7 @@ const Dashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div
               onClick={() => navigate('/chat?session=1')}
-              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-gray-400">Today</span>
@@ -188,7 +188,7 @@ const Dashboard: React.FC = () => {
 
             <div
               onClick={() => navigate('/chat?session=2')}
-              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-gray-400">Yesterday</span>
@@ -205,7 +205,7 @@ const Dashboard: React.FC = () => {
 
             <div
               onClick={() => navigate('/chat?session=3')}
-              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-gray-400">Jan 21</span>

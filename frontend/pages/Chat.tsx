@@ -479,7 +479,7 @@ const Chat: React.FC = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setActiveWidget(activeWidget === 'location' ? 'none' : 'location')}
-                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${activeWidget === 'location' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-sm ${activeWidget === 'location' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
                   }`}
               >
                 <span className="material-symbols-outlined text-sm">location_on</span>
@@ -487,7 +487,7 @@ const Chat: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveWidget(activeWidget === 'schedule' ? 'none' : 'schedule')}
-                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${activeWidget === 'schedule' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-sm ${activeWidget === 'schedule' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
                   }`}
               >
                 <span className="material-symbols-outlined text-sm">calendar_month</span>
@@ -503,7 +503,7 @@ const Chat: React.FC = () => {
                     setIsCallActive(true);
                   }
                 }}
-                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl transition-all shadow-sm ${isCallActive ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-sm ${isCallActive ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
                   }`}
               >
                 {isCallActive ? (
@@ -528,7 +528,7 @@ const Chat: React.FC = () => {
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
               >
                 <div className={`flex gap-4 max-w-[90%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`size-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold shadow-sm ${msg.role === 'user' ? 'bg-black text-white' : 'bg-primary text-white'
@@ -583,7 +583,7 @@ const Chat: React.FC = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleNewChat}
-                  className="group flex flex-col items-center justify-center size-14 rounded-3xl bg-white border border-black/5 text-gray-400 hover:text-primary hover:border-primary transition-all shadow-sm"
+                  className="group flex flex-col items-center justify-center size-14 rounded-3xl bg-white border border-black/5 text-gray-400 hover:text-primary hover:border-primary transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-sm"
                   title="New Conversation"
                 >
                   <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">add_comment</span>
@@ -614,7 +614,7 @@ const Chat: React.FC = () => {
                         }
                       }}
                       disabled={!voiceTranscript.trim()}
-                      className={`size-11 rounded-2xl transition-all flex items-center justify-center flex-shrink-0 ${voiceTranscript.trim()
+                      className={`size-11 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center flex-shrink-0 ${voiceTranscript.trim()
                         ? 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
                         : 'bg-gray-100 text-gray-400'
                         }`}
@@ -626,7 +626,7 @@ const Chat: React.FC = () => {
                     {/* Cancel button */}
                     <button
                       onClick={stopListening}
-                      className="size-11 rounded-2xl bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center flex-shrink-0"
+                      className="size-11 rounded-2xl bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center flex-shrink-0"
                       title="Cancel"
                     >
                       <span className="material-symbols-outlined text-xl">close</span>
@@ -652,7 +652,7 @@ const Chat: React.FC = () => {
                     <button
                       onClick={() => handleSend()}
                       disabled={isLoading || !input.trim()}
-                      className={`size-11 rounded-2xl transition-all flex items-center justify-center ${isLoading || !input.trim()
+                      className={`size-11 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center ${isLoading || !input.trim()
                         ? 'bg-gray-100 text-gray-400'
                         : 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
                         }`}
