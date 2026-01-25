@@ -16,7 +16,8 @@ interface Clinic {
 
 interface LocationWidgetProps {
   onClose?: () => void;
-  onSelect?: () => void;
+  onClinicSelect?: (clinic: Clinic) => void;
+  clinics?: any[]; // Allow external control of clinics list
 }
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -138,7 +139,7 @@ const LANDMARK_DATA = [
   { id: 'l10', type: 'gym', name: 'YMCA Centre-ville', lat: 45.5010, lng: -73.5745 }
 ];
 
-const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) => {
+const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect }) => {
   const { userLocation } = useLocation();
   const mapRef = useRef<MapRef>(null);
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -247,9 +248,10 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
   };
 
   // Handle final selection
+  // Handle final selection
   const handleConfirmSelection = () => {
-    if (onSelect) {
-      onSelect();
+    if (onClinicSelect && selectedClinic) {
+      onClinicSelect(selectedClinic);
     }
   };
 
@@ -430,8 +432,8 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onSelect }) =>
                 key={clinic.id}
                 onClick={() => handleClinicSelect(clinic)}
                 className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-md ${selectedClinic?.id === clinic.id
-                    ? 'border-blue-500 ring-2 ring-blue-100'
-                    : 'border-black/5 hover:border-primary'
+                  ? 'border-blue-500 ring-2 ring-blue-100'
+                  : 'border-black/5 hover:border-primary'
                   }`}
               >
                 <div className="flex justify-between items-start mb-2">
