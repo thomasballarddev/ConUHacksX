@@ -163,12 +163,27 @@ const Chat: React.FC = () => {
     setMessages([{ role: 'model', text: 'New conversation started. How can I assist you with your health today?' }]);
   };
 
-  const handleAppointmentConfirm = (details: { day: string; date: string; time: string }) => {
+  const handleAppointmentConfirm = async (details: { day: string; date: string; time: string }) => {
     setActiveWidget('none');
-    setMessages(prev => [...prev,
-    { role: 'model', text: `Appointment confirmed for ${details.day}, Oct ${details.date} at ${details.time}.` }
-    ]);
-    setIsCallActive(true);
+    const appointmentText = `${details.day}, the ${details.date} at ${details.time}`;
+    
+    // Send selection to active call
+    try {
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/call/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: appointmentText })
+      });
+      
+      setMessages(prev => [...prev,
+        { role: 'model', text: `Great! I've told the clinic you'd like the appointment on ${appointmentText}. The receptionist is confirming now...` }
+      ]);
+    } catch (error) {
+      console.error('Failed to send appointment selection:', error);
+      setMessages(prev => [...prev,
+        { role: 'model', text: `Appointment selected: ${appointmentText}. (Note: Could not update the call)` }
+      ]);
+    }
   };
 
   // Derived state for Right Panel visibility
