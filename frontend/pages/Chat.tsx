@@ -133,11 +133,17 @@ const Chat: React.FC = () => {
 
       const data = await res.json();
 
-      // Handle response - either show message or handle signed URL
-      if (data.message) {
+      // If backend returns a message directly (e.g. signedUrl or error)
+      if (data.message && !data.conversation_id) {
+        // Fallback if not using signed URL flow for chat messages
         setMessages(prev => [...prev, { role: 'model', text: data.message }]);
+        setIsLoading(false);
       }
-      setIsLoading(false);
+      // If signed URL, the frontend ElevenLabs widget would handle it, 
+      // but here we are simulating text chat via our backend proxy for now.
+      // Wait, if we use conversational AI, it's audio.
+      // If we use text-to-agent, we need to know how.
+      // Assuming backend proxies text to agent via some API or mocks it for now.
 
     } catch (error) {
       console.error("Chat Error:", error);
