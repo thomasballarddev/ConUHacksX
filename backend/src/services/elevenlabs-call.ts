@@ -277,6 +277,74 @@ export function getActiveCallStatus(): ActiveCall | null {
 }
 
 /**
+ * End the active call via ElevenLabs monitoring WebSocket
+ */
+export async function endActiveCall(): Promise<boolean> {
+  if (!activeCall || !activeCall.conversationId) {
+    console.log('[ElevenLabs-Call] No active call to end');
+    return false;
+  }
+
+  console.log(`[ElevenLabs-Call] Ending call: ${activeCall.id}`);
+  console.log(`[ElevenLabs-Call] Conversation ID: ${activeCall.conversationId}`);
+
+  try {
+    // Connect to the monitoring WebSocket
+    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversations/${activeCall.conversationId}/monitor`;
+    const ws = new WebSocket(wsUrl, {
+      headers: {
+        'xi-api-key': API_KEY || ''
+      }
+    });
+
+    return new Promise((resolve, reject) => {
+      // Set timeout in case WebSocket connection fails
+      const timeout = setTimeout(() => {
+        ws.close();
+        console.error('[ElevenLabs-Call] Timeout trying to end call');
+        resolve(false);
+      }, 5000);
+
+      ws.on('open', () => {
+        console.log('[ElevenLabs-Call] Monitoring WebSocket connected, sending end_call command');
+
+        // Send the end_call command
+        ws.send(JSON.stringify({
+          command_type: 'end_call'
+        }));
+
+        // Give it a moment to process, then close
+        setTimeout(() => {
+          clearTimeout(timeout);
+          ws.close();
+
+          // Update call state
+          if (activeCall) {
+            activeCall.state = 'ended';
+            emitCallEnded(activeCall.id, activeCall.transcript);
+            console.log('[ElevenLabs-Call] ✅ Call ended successfully');
+          }
+
+          // Clear active call
+          activeCall = null;
+          resolve(true);
+        }, 1000);
+      });
+
+      ws.on('error', (error) => {
+        clearTimeout(timeout);
+        console.error('[ElevenLabs-Call] WebSocket error:', error);
+        ws.close();
+        resolve(false);
+      });
+    });
+  } catch (error) {
+    console.error('[ElevenLabs-Call] Error ending call:', error);
+    return false;
+  }
+}
+
+/**
  * Parse time slots from natural language text
  */
 function parseTimeSlotsFromText(text: string): TimeSlot[] {

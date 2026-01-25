@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { emitShowCalendar, emitCallOnHold, emitCallResumed, emitEmergencyTrigger, emitAgentNeedsInput, emitAgentInputReceived } from '../services/websocket.js';
-import { initiateClinicCall, sendResponseToCall, getActiveCallStatus } from '../services/elevenlabs-call.js';
+import { initiateClinicCall, sendResponseToCall, getActiveCallStatus, endActiveCall } from '../services/elevenlabs-call.js';
 import { getPatientSymptoms } from '../services/gemini.js';
 import { getUserProfile, formatProfileForAgent } from '../services/firestore.js';
 import { TimeSlot } from '../types/index.js';
@@ -109,6 +109,23 @@ router.get('/status', (req, res) => {
     });
   } else {
     res.json({ status: 'no_active_call' });
+  }
+});
+
+// POST /call/end - End the active call
+router.post('/end', async (req, res) => {
+  try {
+    console.log('[Call] User requested to end call');
+    const success = await endActiveCall();
+
+    if (success) {
+      res.json({ success: true, message: 'Call ended successfully' });
+    } else {
+      res.status(400).json({ success: false, error: 'Failed to end call or no active call' });
+    }
+  } catch (error) {
+    console.error('Call end error:', error);
+    res.status(500).json({ success: false, error: 'Failed to end call' });
   }
 });
 
