@@ -18,11 +18,11 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
     }
   }, [availableSlots]);
 
-  const days = [
+  const days: { day: string; date: string; disabled?: boolean }[] = [
     { day: 'MON', date: '12' },
     { day: 'TUE', date: '13' },
     { day: 'WED', date: '14' },
-    { day: 'THU', date: '15', disabled: true },
+    { day: 'THU', date: '15' },
     { day: 'FRI', date: '16' },
     { day: 'SAT', date: '17' },
     { day: 'SUN', date: '18' },
