@@ -14,109 +14,75 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ audioData }) => {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const width = canvas.width;
-        const height = canvas.height;
+        // Handle high DPI displays
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+
+        const width = rect.width;
+        const height = rect.height;
+        const centerY = height / 2;
 
         ctx.clearRect(0, 0, width, height);
 
-        // Style: Siri-like vibrating line
-        // We'll draw a smooth curve connecting the frequency points
-        // Center line typically
-
-        // However, the "audio line" look usually implies a waveform or frequency bars mirrored.
-        // Let's do a glowing line that deforms based on volume/freq.
-
-        const bufferLength = audioData.length;
-        if (bufferLength === 0) {
-            // Draw flat line
-            ctx.beginPath();
-            ctx.moveTo(0, height / 2);
-            ctx.lineTo(width, height / 2);
-            ctx.strokeStyle = 'rgba(76, 175, 80, 0.3)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            return;
+        // Calculate average volume for overall intensity
+        let sum = 0;
+        for (let i = 0; i < audioData.length; i++) {
+            sum += audioData[i];
         }
+        const avgVolume = audioData.length > 0 ? sum / audioData.length / 255 : 0;
 
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = '#4e4235'; // Primary dark/brown color from theme or custom
+        // Draw smooth pulsing bars - Siri/modern style
+        const barCount = 5;
+        const barWidth = 4;
+        const barGap = 6;
+        const totalWidth = barCount * barWidth + (barCount - 1) * barGap;
+        const startX = (width - totalWidth) / 2;
+        const maxBarHeight = height * 0.7;
+        const minBarHeight = 4;
+
+        // Primary color gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, '#4e4235');
+        gradient.addColorStop(0.5, '#6b5a47');
+        gradient.addColorStop(1, '#4e4235');
+
+        ctx.fillStyle = gradient;
         ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
 
-        // We can create a multi-colored effect or just stick to one "clean" color
-        const gradient = ctx.createLinearGradient(0, 0, width, 0);
-        gradient.addColorStop(0, '#4CAF50');
-        gradient.addColorStop(0.5, '#8BC34A');
-        gradient.addColorStop(1, '#4CAF50');
-        ctx.strokeStyle = gradient;
+        for (let i = 0; i < barCount; i++) {
+            // Use different frequency bands for each bar
+            const freqIndex = Math.floor((i / barCount) * (audioData.length * 0.5));
+            const freqValue = audioData[freqIndex] || 0;
+            const normalizedValue = freqValue / 255;
 
-        ctx.beginPath();
+            // Create smooth animation with sine wave base
+            const time = Date.now() / 200;
+            const wave = Math.sin(time + i * 0.8) * 0.3 + 0.7;
+            
+            // Combine audio level with wave animation
+            const intensity = Math.max(normalizedValue * 1.2, avgVolume * 0.5) * wave;
+            const barHeight = Math.max(minBarHeight, intensity * maxBarHeight);
 
-        const sliceWidth = width * 1.0 / bufferLength;
-        let x = 0;
+            const x = startX + i * (barWidth + barGap);
+            const y = centerY - barHeight / 2;
 
-        // Draw Frequency Domain as a centered wave
-        // Low frequencies are at the start of audioData.
-        // We want to mirror it for a symmetric look:  Low -> High -> Low
-
-        // Easier approach for "Siri look":
-        // Draw a base circle or line that expands.
-        // The user asked for "audio line".
-
-        ctx.moveTo(0, height / 2);
-
-        // Simple visualizer: line + amplitude
-        for (let i = 0; i < bufferLength; i++) {
-            // audioData[i] is 0-255
-            const v = audioData[i] / 128.0;
-            const y = (v * height) / 2; // scale to canvas
-
-            // We want 0 input to be height/2.
-            // High input deviates from height/2.
-            const amplitude = (audioData[i] / 255) * (height / 2) * 1.5;
-
-            // Alternate up and down for "wave" (not accurate FFT but looks cool)
-            // actually FFT is frequency magnitudes.
-            // Let's just create a curve.
-
-            if (i === 0) {
-                ctx.moveTo(x, height / 2);
-            } else {
-                // Smooth curve
-                // checking even/odd to create jagged wave or just using value as offset
-                const direction = i % 2 === 0 ? 1 : -1;
-                // Dampen the edges
-                let dampener = 1;
-                if (i < bufferLength * 0.1) dampener = i / (bufferLength * 0.1);
-                if (i > bufferLength * 0.9) dampener = (bufferLength - i) / (bufferLength * 0.1);
-
-                const yOffset = amplitude * direction * dampener;
-                ctx.lineTo(x, (height / 2) + yOffset);
-            }
-
-            x += sliceWidth;
+            // Draw rounded bar
+            ctx.beginPath();
+            ctx.roundRect(x, y, barWidth, barHeight, barWidth / 2);
+            ctx.fill();
         }
-
-        ctx.lineTo(width, height / 2);
-        ctx.stroke();
-
-        // Add Glow
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#4CAF50';
-        ctx.stroke();
-        ctx.shadowBlur = 0;
 
     }, [audioData]);
 
     return (
-        <div className="w-full h-24 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-3xl overflow-hidden border border-green-500/20">
-            <canvas
-                ref={canvasRef}
-                width={300}
-                height={100}
-                className="w-full h-full"
-            />
-        </div>
+        <canvas
+            ref={canvasRef}
+            className="w-16 h-10"
+            style={{ width: '64px', height: '40px' }}
+        />
     );
 };
 

@@ -253,31 +253,11 @@ export const useVoiceInput = ({ onFinalTranscript }: UseVoiceInputProps) => {
                 }
             }
 
-            // Update transcript state for UI
-            setTranscript(interimTranscript || finalTranscriptChunk); // Prefer interim for live feedback
-
-            // Silence Detection Logic
-            lastSpeechTimeRef.current = Date.now();
-            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-
-            // If we have a final chunk or just updated interim, wait 2.5s for silence to confirm "done"
-            // Ideally, we want to detect when the user STOPS talking for 2-3s.
-            silenceTimerRef.current = setTimeout(() => {
-                // If silence threshold met and we have some text
-                if (Date.now() - lastSpeechTimeRef.current > 2000) {
-                    stopListening(); // Use the callback properly
-                    // Get the FULL recognized text from the event if possible or rely on state. 
-                    // actually event.results accumulates. 
-                    // Let's just grab the latest full text.
-                    const fullText = Array.from(event.results)
-                        .map((r: any) => r[0].transcript)
-                        .join('');
-
-                    if (fullText.trim()) {
-                        onFinalTranscript(fullText.trim());
-                    }
-                }
-            }, 2500);
+            // Update transcript state for UI - accumulate all results
+            const fullText = Array.from(event.results)
+                .map((r: any) => r[0].transcript)
+                .join('');
+            setTranscript(fullText);
         };
 
         recognition.onerror = (event: any) => {

@@ -577,17 +577,46 @@ const Chat: React.FC = () => {
                 </button>
 
                 {isListening ? (
-                  <div className="flex-1 bg-white border border-black/5 shadow-2xl rounded-[32px] p-2 flex items-center justify-center animate-in fade-in zoom-in duration-300">
-                    <div className="flex-1 px-4">
-                      {/* Visualizer takes full width of container */}
+                  <div className="flex-1 bg-white border-2 border-primary/30 shadow-2xl rounded-[32px] p-2 flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                    {/* Recording indicator */}
+                    <div className="flex items-center gap-2 px-3">
+                      <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
                       <AudioVisualizer audioData={audioData} />
                     </div>
+                    
+                    {/* Transcript display */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[15px] text-gray-800 truncate">
+                        {voiceTranscript || <span className="text-gray-400 italic">Listening...</span>}
+                      </p>
+                    </div>
+                    
+                    {/* Send button */}
+                    <button
+                      onClick={() => {
+                        if (voiceTranscript.trim()) {
+                          stopListening();
+                          handleSend(voiceTranscript.trim());
+                        }
+                      }}
+                      disabled={!voiceTranscript.trim()}
+                      className={`size-11 rounded-2xl transition-all flex items-center justify-center ${
+                        voiceTranscript.trim()
+                          ? 'bg-primary text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
+                      title="Send Message"
+                    >
+                      <span className="material-symbols-outlined">arrow_upward</span>
+                    </button>
+                    
+                    {/* Cancel button */}
                     <button
                       onClick={stopListening}
-                      className="size-12 rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center mr-1"
-                      title="Cancel Voice Input"
+                      className="size-11 rounded-2xl bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center"
+                      title="Cancel"
                     >
-                      <span className="material-symbols-outlined">close</span>
+                      <span className="material-symbols-outlined text-xl">close</span>
                     </button>
                   </div>
                 ) : (
