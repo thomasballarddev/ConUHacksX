@@ -154,14 +154,9 @@ const Chat: React.FC = () => {
         body: JSON.stringify({ message: userMsg })
       });
 
-      const data = await res.json();
-
-      // If backend returns a message directly (e.g. signedUrl or error)
-      if (data.message && !data.conversation_id) {
-        // Fallback if not using signed URL flow for chat messages
-        setMessages(prev => [...prev, { role: 'model', text: data.message }]);
-        setIsLoading(false);
-      }
+      // Response will come via WebSocket (chat_response event)
+      // Just await the REST call to ensure message was sent
+      await res.json();
       // If signed URL, the frontend ElevenLabs widget would handle it, 
       // but here we are simulating text chat via our backend proxy for now.
       // Wait, if we use conversational AI, it's audio.
