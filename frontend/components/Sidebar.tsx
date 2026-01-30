@@ -4,11 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { subscribeToChatSessions, ChatSession, getActiveChatId } from '../src/firestore';
 
 interface SidebarProps {
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
@@ -147,7 +147,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
           <span className="text-sm font-medium">Settings</span>
         </NavLink>
         <button
-          onClick={onLogout}
+          onClick={() => {
+            signOut();
+            onLogout?.();
+          }}
           className="w-full flex items-center justify-center space-x-3 bg-white border border-black/5 text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 py-3 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-sm font-bold text-sm"
         >
           <span className="material-symbols-outlined text-lg">logout</span>

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { hasCompletedOnboarding } from '../src/firestore';
 
 import healthImage from '../assets/health.jpg';
 
@@ -33,10 +34,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
       await requestLocation();
       onLogin();
-      navigate('/onboarding'); // Redirect to onboarding for new users
+
+      // Check if user has completed onboarding
+      const user = result?.user;
+      if (user) {
+        const completed = await hasCompletedOnboarding(user.uid);
+        if (completed) {
+          navigate('/chat');
+        } else {
+          navigate('/onboarding');
+        }
+      } else {
+        navigate('/onboarding');
+      }
     } catch (error) {
       console.error('Google sign-in failed:', error);
     } finally {

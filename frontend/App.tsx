@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { LocationProvider } from './contexts/LocationContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { hasCompletedOnboarding } from './src/firestore';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -14,15 +15,52 @@ import SignUp from './pages/SignUp';
 import Calendar from './pages/Calendar';
 import Onboarding from './pages/Onboarding';
 
-const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+// Inner app component that can use auth context
+const AppRoutes: React.FC = () => {
+  const { user, loading } = useAuth();
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+
+  // Check onboarding status when user changes
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (user) {
+        setCheckingOnboarding(true);
+        const completed = await hasCompletedOnboarding(user.uid);
+        setOnboardingComplete(completed);
+        setCheckingOnboarding(false);
+      } else {
+        setOnboardingComplete(null);
+        setCheckingOnboarding(false);
+      }
+    };
+
+    if (!loading) {
+      checkOnboarding();
+    }
+  }, [user, loading]);
 
   const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    if (loading || checkingOnboarding) {
+      return (
+        <div className="h-screen flex items-center justify-center bg-bg-cream">
+          <span className="material-symbols-outlined animate-spin text-4xl text-gray-400">progress_activity</span>
+        </div>
+      );
+    }
+
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+
+    // Redirect to onboarding if not completed
+    if (onboardingComplete === false) {
+      return <Navigate to="/onboarding" replace />;
+    }
+
     return (
       <div className="h-screen flex overflow-hidden bg-bg-cream transition-colors duration-300">
-        <Sidebar onLogout={() => setIsAuthenticated(false)} />
+        <Sidebar onLogout={() => {}} />
         <main className="flex-1 flex flex-col relative overflow-hidden bg-soft-cream">
           <Header />
           <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -33,28 +71,50 @@ const App: React.FC = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-bg-cream">
+        <span className="material-symbols-outlined animate-spin text-4xl text-gray-400">progress_activity</span>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={
+        user ? <Navigate to="/" replace /> : <Login onLogin={() => {}} />
+      } />
+      <Route path="/signup" element={
+        user ? <Navigate to="/" replace /> : <SignUp onSignUp={() => {}} />
+      } />
+      <Route path="/onboarding" element={
+        user ? (
+          onboardingComplete ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Onboarding onComplete={() => setOnboardingComplete(true)} />
+          )
+        ) : (
+          <Navigate to="/login" replace />
+        )
+      } />
+      <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
+      <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
+      <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
+      <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
+      <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
+      <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
+
+const App: React.FC = () => {
   return (
     <AuthProvider>
       <LocationProvider>
         <Router>
-          <Routes>
-            <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
-            <Route path="/signup" element={<SignUp onSignUp={() => setIsAuthenticated(true)} />} />
-            <Route path="/onboarding" element={
-              isAuthenticated ? (
-                <Onboarding onComplete={() => setHasCompletedOnboarding(true)} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            } />
-            <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
-            <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
-            <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
-            <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
-            <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
-            <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AppRoutes />
         </Router>
       </LocationProvider>
     </AuthProvider>
