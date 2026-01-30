@@ -14,6 +14,7 @@ interface UserProfile {
     fullName: string;
     dateOfBirth: string;
     gender: string;
+    phone: string;
   };
   physicalStats: {
     height: string;
@@ -46,13 +47,23 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [showAutofillToast, setShowAutofillToast] = useState(false);
   
   const [profile, setProfile] = useState<UserProfile>({
-    personalInfo: { fullName: '', dateOfBirth: '', gender: '' },
+    personalInfo: { fullName: user?.displayName || '', dateOfBirth: '', gender: '', phone: '' },
     physicalStats: { height: '', weight: '' },
     bloodType: '',
     allergies: [],
     medicalConditions: { conditions: [], notes: '' },
     emergencyContact: { name: '', relationship: '', phone: '' }
   });
+
+  // Update fullName when user becomes available
+  useEffect(() => {
+    if (user?.displayName) {
+      setProfile(prev => ({
+        ...prev,
+        personalInfo: { ...prev.personalInfo, fullName: user.displayName || '' }
+      }));
+    }
+  }, [user]);
 
   const [customAllergy, setCustomAllergy] = useState('');
 
@@ -77,7 +88,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     
     switch (currentStep) {
       case 0:
-        setProfile(prev => ({ ...prev, personalInfo: demo.personalInfo }));
+        // Keep fullName from Google, only autofill dateOfBirth, gender, and phone
+        setProfile(prev => ({
+          ...prev,
+          personalInfo: {
+            ...prev.personalInfo,
+            dateOfBirth: demo.personalInfo.dateOfBirth,
+            gender: demo.personalInfo.gender,
+            phone: demo.personalInfo.phone || '(514) 555-1234'
+          }
+        }));
         break;
       case 1:
         setProfile(prev => ({ ...prev, physicalStats: demo.physicalStats }));
@@ -102,7 +122,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const stepTitles = [
-    { icon: 'person', title: 'Personal Information', subtitle: 'Let\'s start with the basics' },
+    { icon: 'person', title: 'Personal Details', subtitle: 'Tell us a bit about yourself' },
     { icon: 'straighten', title: 'Physical Stats', subtitle: 'Help us understand your body' },
     { icon: 'bloodtype', title: 'Blood Type', subtitle: 'Select your blood type' },
     { icon: 'warning', title: 'Allergies', subtitle: 'Tell us about any allergies' },
@@ -207,17 +227,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       case 0:
         return (
           <div className="space-y-6">
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-400 ml-1">Full Name</label>
-              <input
-                className="w-full px-5 py-4 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]"
-                placeholder="Enter your full name"
-                value={profile.personalInfo.fullName}
-                onChange={(e) => setProfile(prev => ({
-                  ...prev,
-                  personalInfo: { ...prev.personalInfo, fullName: e.target.value }
-                }))}
-              />
+            <div className="p-4 bg-primary/5 rounded-2xl flex items-center gap-4">
+              {user?.photoURL && (
+                <img src={user.photoURL} alt="" className="w-12 h-12 rounded-full" />
+              )}
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Welcome</p>
+                <p className="text-lg font-bold text-primary">{user?.displayName || 'there'}</p>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-400 ml-1">Date of Birth</label>
@@ -252,6 +269,19 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-400 ml-1">Phone Number</label>
+              <input
+                type="tel"
+                className="w-full px-5 py-4 rounded-2xl bg-gray-50/50 border-none ring-1 ring-gray-100 focus:ring-2 focus:ring-primary transition-all text-primary placeholder:text-gray-300 text-[15px]"
+                placeholder="(555) 123-4567"
+                value={profile.personalInfo.phone}
+                onChange={(e) => setProfile(prev => ({
+                  ...prev,
+                  personalInfo: { ...prev.personalInfo, phone: e.target.value }
+                }))}
+              />
             </div>
           </div>
         );

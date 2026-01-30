@@ -158,6 +158,7 @@ export interface UserProfile {
     fullName: string;
     dateOfBirth: string;
     gender: string;
+    phone: string;
   };
   physicalStats: {
     height: string;
