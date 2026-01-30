@@ -1,60 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import cyclingImage from '../assets/cycling.jpg';
+import { useAuth } from '../contexts/AuthContext';
+import { subscribeToChatSessions, ChatSession } from '../src/firestore';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [showAllSessions, setShowAllSessions] = useState(false);
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
 
-  const allSessions = [
-    { id: 1, title: 'General checkup followup', date: 'Today', status: 'active', preview: "I've been feeling much better, but I still have some mild fatigue in the afternoons..." },
-    { id: 2, title: 'Lower back pain query', date: 'Yesterday', status: 'completed', preview: "I've been experiencing lower back pain for the past few days, especially when sitting..." },
-    { id: 3, title: 'Prescription refill request', date: 'Jan 21', status: 'completed', preview: "I need to refill my blood pressure medication. I'm running low..." },
-    { id: 4, title: 'Headache symptoms', date: 'Jan 19', status: 'completed', preview: "I've been having recurring headaches for the past week. They usually start in the afternoon..." },
-    { id: 5, title: 'Annual physical booking', date: 'Jan 15', status: 'completed', preview: "I'd like to schedule my annual physical exam. What availability do you have..." },
-  ];
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = subscribeToChatSessions(user.uid, (chatSessions) => {
+      setSessions(chatSessions.slice(0, 3)); // Only show 3 most recent
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const formatDate = (timestamp: any): string => {
+    if (!timestamp) return '';
+
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Get first name from display name
+  const firstName = user?.displayName?.split(' ')[0] || 'there';
 
   return (
-    <>
-    {/* View All Sessions Modal */}
-    {showAllSessions && (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAllSessions(false)}>
-        <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-          <div className="p-6 border-b border-black/5 flex items-center justify-between">
-            <h2 className="serif-font text-2xl text-primary">All Chat Sessions</h2>
-            <button onClick={() => setShowAllSessions(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-all">
-              <span className="material-symbols-outlined text-sm">close</span>
-            </button>
-          </div>
-          <div className="p-6 overflow-y-auto max-h-[60vh] space-y-3">
-            {allSessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => { setShowAllSessions(false); navigate(`/chat?session=${session.id}`); }}
-                className="bg-gray-50 p-4 rounded-2xl border border-black/5 hover:bg-white hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-bold text-primary">{session.title}</h4>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{session.date}</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider text-white px-2 py-1 rounded-lg ${
-                      session.status === 'active' ? 'bg-blue-500' : 'bg-green-600'
-                    }`}>
-                      {session.status === 'active' ? 'Active' : 'Completed'}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 line-clamp-1">"{session.preview}"</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )}
     <div className="px-8 pb-32">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="serif-font text-5xl text-primary mb-4 leading-tight">Welcome, Alex!</h1>
+          <h1 className="serif-font text-5xl text-primary mb-4 leading-tight">Welcome, {firstName}!</h1>
           <p className="text-xl text-gray-500 max-w-2xl leading-relaxed">
             Your personal AI health assistant is ready to help. How are you feeling today?
           </p>
@@ -63,12 +49,12 @@ const Dashboard: React.FC = () => {
         {/* Hero Section with Integrated Summary */}
         <div className="relative w-full min-h-[500px] rounded-[40px] overflow-hidden mb-12 shadow-lg group flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-500 z-10"></div>
-          <img 
-            src={cyclingImage} 
-            alt="Active Lifestyle" 
+          <img
+            src={cyclingImage}
+            alt="Active Lifestyle"
             className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
           />
-          
+
           <div className="relative z-30 p-6 md:p-8 pb-4 md:pb-6">
             {/* Daily Health Summary Overlay */}
             <div className="bg-card-beige/90 backdrop-blur-md p-8 rounded-3xl border border-black/5 shadow-xl">
@@ -161,65 +147,42 @@ const Dashboard: React.FC = () => {
               <span className="material-symbols-outlined text-primary">forum</span>
               Recent Sessions
             </h3>
-            <button
-              onClick={() => setShowAllSessions(true)}
-              className="text-xs font-bold text-primary hover:text-black transition-colors"
-            >
-              View All
-            </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div
-              onClick={() => navigate('/chat?session=1')}
-              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-gray-400">Today</span>
-                <span className="size-2 bg-blue-500 rounded-full"></span>
-              </div>
-              <h4 className="font-bold text-primary mb-2">General checkup followup</h4>
-              <p className="text-sm text-gray-500 line-clamp-2">
-                "I've been feeling much better, but I still have some mild fatigue in the afternoons..."
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-blue-500 px-2 py-1 rounded-lg">Active</span>
-              </div>
+          {sessions.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-black/5 shadow-sm text-center">
+              <span className="material-symbols-outlined text-4xl text-gray-300 mb-3">chat_bubble_outline</span>
+              <p className="text-gray-400">No conversations yet. Start a new chat!</p>
+              <button
+                onClick={() => navigate('/chat')}
+                className="mt-4 bg-primary text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition-all"
+              >
+                Start Chat
+              </button>
             </div>
-
-            <div
-              onClick={() => navigate('/chat?session=2')}
-              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-gray-400">Yesterday</span>
-                <span className="size-2 bg-green-500 rounded-full"></span>
-              </div>
-              <h4 className="font-bold text-primary mb-2">Lower back pain query</h4>
-              <p className="text-sm text-gray-500 line-clamp-2">
-                "I've been experiencing lower back pain for the past few days, especially when sitting..."
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-green-600 px-2 py-1 rounded-lg">Completed</span>
-              </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {sessions.map((session, index) => (
+                <div
+                  key={session.id}
+                  onClick={() => navigate(`/chat?session=${session.id}`)}
+                  className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-gray-400">{formatDate(session.updatedAt)}</span>
+                    <span className={`size-2 rounded-full ${index === 0 ? 'bg-blue-500' : 'bg-green-500'}`}></span>
+                  </div>
+                  <h4 className="font-bold text-primary mb-2 line-clamp-1">{session.title}</h4>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider text-white px-2 py-1 rounded-lg ${
+                      index === 0 ? 'bg-blue-500' : 'bg-green-600'
+                    }`}>
+                      {index === 0 ? 'Recent' : 'Previous'}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
-
-            <div
-              onClick={() => navigate('/chat?session=3')}
-              className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm hover:shadow-lg hover:border-primary/20 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-gray-400">Jan 21</span>
-                <span className="size-2 bg-green-500 rounded-full"></span>
-              </div>
-              <h4 className="font-bold text-primary mb-2">Prescription refill request</h4>
-              <p className="text-sm text-gray-500 line-clamp-2">
-                "I need to refill my blood pressure medication. I'm running low..."
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-green-600 px-2 py-1 rounded-lg">Completed</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Recent Health Summary */}
@@ -246,7 +209,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
     </div>
-    </>
   );
 };
 
