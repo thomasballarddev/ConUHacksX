@@ -92,15 +92,61 @@ export const getOrCreateActiveChat = async (userId: string): Promise<string> => 
   // In production, you might want to track the active chat differently
   const activeChatRef = doc(db, 'users', userId, 'activeChat', 'current');
   const activeChat = await getDoc(activeChatRef);
-  
+
   if (activeChat.exists() && activeChat.data().chatId) {
     return activeChat.data().chatId;
   }
-  
+
   // Create new chat session
   const chatId = await createChatSession(userId);
   await setDoc(activeChatRef, { chatId });
   return chatId;
+};
+
+/**
+ * Subscribe to user's chat sessions (for sidebar)
+ */
+export const subscribeToChatSessions = (
+  userId: string,
+  callback: (sessions: ChatSession[]) => void
+): (() => void) => {
+  const chatsRef = collection(db, 'users', userId, 'chats');
+  const q = query(chatsRef, orderBy('updatedAt', 'desc'));
+
+  return onSnapshot(q, (snapshot) => {
+    const sessions: ChatSession[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      sessions.push({
+        id: doc.id,
+        title: data.title || 'New Conversation',
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt
+      });
+    });
+    callback(sessions);
+  });
+};
+
+/**
+ * Get the current active chat ID for a user
+ */
+export const getActiveChatId = async (userId: string): Promise<string | null> => {
+  const activeChatRef = doc(db, 'users', userId, 'activeChat', 'current');
+  const activeChat = await getDoc(activeChatRef);
+
+  if (activeChat.exists() && activeChat.data().chatId) {
+    return activeChat.data().chatId;
+  }
+  return null;
+};
+
+/**
+ * Set the active chat ID for a user
+ */
+export const setActiveChatId = async (userId: string, chatId: string): Promise<void> => {
+  const activeChatRef = doc(db, 'users', userId, 'activeChat', 'current');
+  await setDoc(activeChatRef, { chatId });
 };
 
 // =====================

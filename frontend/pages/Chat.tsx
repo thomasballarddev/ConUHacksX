@@ -7,7 +7,7 @@ import LocationWidget from '../components/LocationWidget';
 import QuestionWidget from '../components/QuestionWidget';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { saveMessage, getOrCreateActiveChat, subscribeToMessages, createChatSession } from '../src/firestore';
+import { saveMessage, getOrCreateActiveChat, subscribeToMessages, createChatSession, setActiveChatId } from '../src/firestore';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../src/firebase';
 
@@ -46,66 +46,6 @@ interface ClientToServerEvents {
 }
 
 
-// Fake session data with preloaded message history
-const sessionData = [
-  {
-    id: 1,
-    title: 'General checkup followup',
-    date: 'Today',
-    status: 'active' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! I see you had a general checkup last week. How are you feeling since then?' },
-      { role: 'user' as const, text: "I've been feeling much better, but I still have some mild fatigue in the afternoons." },
-      { role: 'model' as const, text: "That's good to hear you're improving! Mild afternoon fatigue can be normal during recovery. Make sure you're staying hydrated and getting adequate sleep. If the fatigue persists beyond another week, we should schedule a follow-up." },
-    ]
-  },
-  {
-    id: 2,
-    title: 'Lower back pain query',
-    date: 'Yesterday',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! How can I help you today?' },
-      { role: 'user' as const, text: "I've been experiencing lower back pain for the past few days, especially when sitting for long periods." },
-      { role: 'model' as const, text: "Lower back pain from prolonged sitting is quite common. I recommend taking breaks every 30 minutes to stretch, ensuring your chair provides proper lumbar support, and doing gentle stretches. Would you like me to find a nearby clinic if the pain persists?" },
-    ]
-  },
-  {
-    id: 3,
-    title: 'Prescription refill request',
-    date: 'Jan 21',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! How can I assist you today?' },
-      { role: 'user' as const, text: "I need to refill my blood pressure medication. I'm running low." },
-      { role: 'model' as const, text: "I can help you with that. I see you're on Lisinopril 10mg. I've sent a refill request to your pharmacy. It should be ready for pickup within 24 hours. Remember to take it at the same time each day." },
-    ]
-  },
-  {
-    id: 4,
-    title: 'Headache symptoms',
-    date: 'Jan 19',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! What brings you in today?' },
-      { role: 'user' as const, text: "I've been having recurring headaches for the past week. They usually start in the afternoon." },
-      { role: 'model' as const, text: "Recurring afternoon headaches could be related to eye strain, dehydration, or tension. Are you spending a lot of time on screens? Try the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds. Also ensure you're drinking enough water." },
-    ]
-  },
-  {
-    id: 5,
-    title: 'Annual physical booking',
-    date: 'Jan 15',
-    status: 'completed' as const,
-    messages: [
-      { role: 'model' as const, text: 'Hello! How can I help you today?' },
-      { role: 'user' as const, text: "I'd like to schedule my annual physical exam." },
-      { role: 'model' as const, text: "I'd be happy to help you book your annual physical. I found several clinics near you with availability this week. Would you like me to show you the options?" },
-      { role: 'user' as const, text: 'Yes please!' },
-      { role: 'model' as const, text: "I've found City Health Center with openings on Thursday and Friday morning. Shall I book one of those slots for you?" },
-    ]
-  },
-];
 
 import { useVoiceInput } from '../src/hooks/useVoiceInput';
 import AudioVisualizer from '../components/AudioVisualizer';
@@ -127,37 +67,61 @@ const Chat: React.FC = () => {
 
   // Session state
   const [searchParams] = useSearchParams();
-  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
 
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule' | 'question'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
 
-  // Initialize Firestore chat session when user is authenticated
+  // Initialize Firestore chat session when user is authenticated or URL changes
   useEffect(() => {
     if (!user) return;
 
+    const sessionParam = searchParams.get('session');
+
     const initFirestoreChat = async () => {
       try {
-        const chatId = await getOrCreateActiveChat(user.uid);
+        let chatId: string;
+
+        if (sessionParam) {
+          // Load specific session from URL
+          chatId = sessionParam;
+          setActiveSessionId(sessionParam);
+          await setActiveChatId(user.uid, chatId);
+        } else {
+          // Get or create active chat
+          chatId = await getOrCreateActiveChat(user.uid);
+          setActiveSessionId(null);
+        }
+
         setFirestoreChatId(chatId);
 
         // Subscribe to messages from Firestore
         const unsubscribe = subscribeToMessages(user.uid, chatId, (firestoreMessages) => {
           if (firestoreMessages.length > 0) {
             setMessages(firestoreMessages.map(m => ({ role: m.role, text: m.text })));
+          } else {
+            // No messages yet, show welcome message
+            setMessages([{
+              role: 'model',
+              text: 'Hello! I am your Health.me AI assistant. I have access to your health records and current vitals. How can I help you today?'
+            }]);
           }
         });
 
+        setIsCompleted(false);
         return unsubscribe;
       } catch (error) {
         console.error('Error initializing Firestore chat:', error);
       }
     };
 
-    initFirestoreChat();
-  }, [user]);
+    const cleanup = initFirestoreChat();
+    return () => {
+      cleanup?.then(unsub => unsub?.());
+    };
+  }, [user, searchParams]);
 
   // Voice Hook
   const handleVoiceFinalResult = (text: string) => {
@@ -177,27 +141,6 @@ const Chat: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Load session from URL params
-  useEffect(() => {
-    const sessionParam = searchParams.get('session');
-    if (sessionParam) {
-      const sessionId = parseInt(sessionParam);
-      const session = sessionData.find(s => s.id === sessionId);
-      if (session) {
-        setActiveSessionId(sessionId);
-        setMessages(session.messages);
-        setIsCompleted(session.status === 'completed');
-      }
-    } else {
-      // Reset to default when no session param
-      setActiveSessionId(null);
-      setIsCompleted(false);
-      setMessages([{
-        role: 'model',
-        text: 'Hello! I am your Health.me AI assistant. I have access to your health records and current vitals. How can I help you today?'
-      }]);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     if (scrollRef.current) {

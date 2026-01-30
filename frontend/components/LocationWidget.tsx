@@ -141,12 +141,32 @@ const LANDMARK_DATA = [
 ];
 
 const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect }) => {
-  const { userLocation } = useLocation();
+  const { userLocation, requestLocation } = useLocation();
   const mapRef = useRef<MapRef>(null);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
   const [routeGeoJson, setRouteGeoJson] = useState<GeoJSON.Feature | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Request user's actual location on mount
+  useEffect(() => {
+    if (!userLocation) {
+      requestLocation();
+    }
+  }, []);
+
+  // Fly to user's location when it becomes available
+  useEffect(() => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [userLocation.longitude, userLocation.latitude],
+        zoom: 15.5,
+        pitch: 60,
+        bearing: -17.6,
+        duration: 2000
+      });
+    }
+  }, [userLocation]);
 
   // Use user location or default to base location (1450 Guy St)
   const mapCenter = userLocation || BASE_LOCATION;
