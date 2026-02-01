@@ -24,6 +24,7 @@ export interface TimeSlot {
   day: string;
   date: string;
   time: string;
+  month?: string;  // Optional month abbreviation (e.g., "Feb", "Mar")
 }
 
 export interface CallState {

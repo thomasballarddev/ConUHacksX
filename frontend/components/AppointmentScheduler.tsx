@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 interface AppointmentSchedulerProps {
   onClose?: () => void;
   onConfirm?: (details: { day: string; date: string; time: string }) => void;
-  availableSlots?: { day: string; date: string; time: string }[];
+  availableSlots?: { day: string; date: string; time: string; month?: string }[];
 }
 
 // Helper function to get upcoming days (14 days to cover 2 weeks for LLM flexibility)
@@ -104,7 +104,8 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
          // Add to days list if new - use smart date matching
          if (!dynamicDaysSet.has(slotKey)) {
             dynamicDaysSet.add(slotKey);
-            const month = getMonthForDate(slot.day, correctDate);
+            // Use month from slot if provided by backend, otherwise calculate
+            const month = slot.month || getMonthForDate(slot.day, correctDate);
             dynamicDays.push({ day: slot.day, date: correctDate, month });
          }
       }
