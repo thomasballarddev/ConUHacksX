@@ -199,6 +199,7 @@ function parseSlots(slots) {
     }
     const parsedSlots = [];
     const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const monthAbbrev = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const dayNamesLower = {
         'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6,
         'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6
@@ -245,7 +246,8 @@ function parseSlots(slots) {
                         parsedSlots.push({
                             day: dayOfWeek,
                             date: String(dayOfMonth),
-                            time: timeStr
+                            time: timeStr,
+                            month: monthAbbrev[targetDate.getMonth()]
                         });
                     }
                     else {
@@ -286,7 +288,8 @@ function parseSlots(slots) {
                     parsedSlots.push({
                         day: dayOfWeek,
                         date: String(dayOfMonth),
-                        time: timeStr
+                        time: timeStr,
+                        month: monthAbbrev[monthIndex]
                     });
                 }
             }
@@ -310,7 +313,8 @@ function parseSlots(slots) {
                     parsedSlots.push({
                         day: dayOfWeek,
                         date: String(dayOfMonth),
-                        time: timeStr
+                        time: timeStr,
+                        month: monthAbbrev[targetDate.getMonth()]
                     });
                 }
             }
