@@ -152,7 +152,7 @@ const Chat: React.FC = () => {
   const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
 
   // Widget Data
-  const [clinics, setClinics] = useState<any[]>([]);
+
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [showEmergency, setShowEmergency] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
@@ -172,8 +172,7 @@ const Chat: React.FC = () => {
     });
 
     // 2. Listen for Events
-    socket.on('show_clinics', (data) => {
-      setClinics(data);
+    socket.on('show_clinics', () => {
       setActiveWidget('location');
     });
 
@@ -636,7 +635,6 @@ const Chat: React.FC = () => {
                 <LocationWidget
                   onClose={() => setActiveWidget('none')}
                   onClinicSelect={handleClinicSelect}
-                  clinics={clinics}
                 />
               )}
               {activeWidget === 'schedule' && (

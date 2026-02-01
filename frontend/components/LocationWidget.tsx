@@ -18,7 +18,6 @@ interface Clinic {
 interface LocationWidgetProps {
   onClose?: () => void;
   onClinicSelect?: (clinic: Clinic) => void;
-  clinics?: any[]; // Allow external control of clinics list
 }
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -26,119 +25,71 @@ const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 // Base location: 1450 Guy St, Montreal, Quebec H3H 0A1
 const BASE_LOCATION = { longitude: -73.5791, latitude: 45.4953 };
 
-// Real Montreal clinics for the hackathon demo
-const CLINIC_DATA = [
-  {
-    id: 'clinic-1',
-    name: 'Clinique Médicale Crescent',
-    address: '1198 Crescent St, Montreal, Quebec H3G 2A9',
-    distance: 0.3,
-    rating: 2.1,
-    phone: '(514) 933-8383'
-  },
-  {
-    id: 'clinic-2',
-    name: 'Clinique Médicale Privée UnionMD',
-    address: '1191 Avenue Union, Montreal, Quebec H3B 3C3',
-    distance: 0.5,
-    rating: 4.5,
-    phone: '(514) 332-4546'
-  },
-  {
-    id: 'clinic-3',
-    name: 'CuraMed',
-    address: '4150 Rue Sainte-Catherine O #330, Westmount, Quebec H3Z 2Y5',
-    distance: 1.8,
-    rating: 4.8,
-    phone: '(514) 612-2430'
-  },
-  {
-    id: 'clinic-4',
-    name: 'Clinique Santé MD',
-    address: '1411 Peel St, Montreal, Quebec H3A 1S5',
-    distance: 0.4,
-    rating: 4.2,
-    phone: '(514) 843-1234'
-  },
-  {
-    id: 'clinic-5',
-    name: 'Centre Médical Westmount',
-    address: '5025 Sherbrooke St W, Westmount, Quebec H3Z 1H2',
-    distance: 2.1,
-    rating: 4.6,
-    phone: '(514) 481-0268'
-  },
-  {
-    id: 'clinic-6',
-    name: 'Clinique Médicale 1851',
-    address: '1851 Sherbrooke St E, Montreal, Quebec H2K 1B4',
-    distance: 3.5,
-    rating: 3.9,
-    phone: '(514) 524-7548'
-  },
-  {
-    id: 'clinic-7',
-    name: 'Clinique Médicale du Plateau',
-    address: '1315 Mont-Royal Ave E, Montreal, Quebec H2J 1Y6',
-    distance: 2.8,
-    rating: 4.1,
-    phone: '(514) 521-1223'
-  },
-  {
-    id: 'clinic-8',
-    name: 'Clinique Médicale Métro',
-    address: '1844 Rue Sainte-Catherine O, Montreal, Quebec H3H 1M1',
-    distance: 0.2,
-    rating: 3.8,
-    phone: '(514) 932-2334'
-  },
-  {
-    id: 'clinic-9',
-    name: 'Westmount Square Health Group',
-    address: '1 Westmount Sq, Westmount, Quebec H3Z 2P9',
-    distance: 1.5,
-    rating: 4.9,
-    phone: '(514) 934-2334'
-  },
-  {
-    id: 'clinic-10',
-    name: 'Rockland MD',
-    address: '100 Chemin Rockland, Mont-Royal, Quebec H3P 2V9',
-    distance: 4.2,
-    rating: 4.7,
-    phone: '(514) 341-2555'
-  },
-  {
-    id: 'clinic-11',
-    name: 'Clinique Médicale Greene',
-    address: '1241 Greene Ave, Westmount, Quebec H3Z 2A4',
-    distance: 1.6,
-    rating: 4.4,
-    phone: '(514) 932-1111'
-  },
-  {
-    id: 'clinic-12',
-    name: 'Medi-Club',
-    address: '2155 Guy St #500, Montreal, Quebec H3H 2R9',
-    distance: 0.6,
-    rating: 3.5,
-    phone: '(514) 935-8555'
-  }
+// Healthcare categories - ONLY doctors offices (most specific)
+const HEALTHCARE_CATEGORIES = [
+  'doctors_office',
+  'medical_clinic'
 ];
 
-// Random landmarks to make the map feel alive
-const LANDMARK_DATA = [
-  { id: 'l1', type: 'cafe', name: 'Café Myriade', lat: 45.4948, lng: -73.5785 },
-  { id: 'l2', type: 'gym', name: 'Nautilus Plus', lat: 45.4960, lng: -73.5770 },
-  { id: 'l3', type: 'park', name: 'Dorchester Square', lat: 45.5005, lng: -73.5710 },
-  { id: 'l4', type: 'pharmacy', name: 'Jean Coutu', lat: 45.4935, lng: -73.5765 },
-  { id: 'l5', type: 'cafe', name: 'Starbucks', lat: 45.4975, lng: -73.5780 },
-  { id: 'l6', type: 'gym', name: 'Econofitness', lat: 45.4925, lng: -73.5800 },
-  { id: 'l7', type: 'park', name: 'Place du Canada', lat: 45.4990, lng: -73.5720 },
-  { id: 'l8', type: 'cafe', name: 'Humble Lion', lat: 45.5030, lng: -73.5750 },
-  { id: 'l9', type: 'pharmacy', name: 'Pharmaprix', lat: 45.4950, lng: -73.5730 },
-  { id: 'l10', type: 'gym', name: 'YMCA Centre-ville', lat: 45.5010, lng: -73.5745 }
+// ONLY show results containing these terms (family/general practice indicators)
+const INCLUDED_TERMS = [
+  'clinique médicale', 'medical clinic', 'clinique medicale',
+  'family', 'famille', 'familial',
+  'general', 'généraliste', 'generaliste',
+  'walk-in', 'sans rendez-vous', 'walk in',
+  'médecin', 'medecin', 'doctor', 'dr.',
+  'gmc', 'clsc', 'polyclinique', 'polyclinic',
+  'group health', 'groupe santé', 'health center', 'centre de santé'
 ];
+
+// Filter out these specialist types
+const EXCLUDED_TERMS = [
+  // Sexual health / Non-GP practitioners
+  'sexolog', 'sexuel', 'sexual',
+  // Osteopathy (with French accents)
+  'ostéopath', 'osteopath', 'ostéo',
+  // Specialists
+  'plastic', 'cosmetic', 'surgery', 'surgeon', 'chirurgie', 'esthetique', 'esthétique',
+  'pediatr', 'pédiatr', 'enfant', 'child', 'kid',
+  'gynec', 'gynéc', 'obstet', 'obstét', 'fertility', 'fertilité', 'ivf',
+  'cardio', 'neuro', 'oncol', 'cancer', 'urolog', 'gastro', 'pulmon', 'endocrin',
+  'orthop', 'ortho', 'spine', 'joint', 'sport medicine',
+  'allerg', 'immun', 'rheuma',
+  // Mental health / Addiction
+  'psychiatr', 'psycholog', 'mental', 'therapy', 'thérap', 'counsel', 'addiction',
+  'toxicoman', 'rehab', 'recovery', 'detox', 'substance', 'dependan',
+  'alcool', 'drogue', 'sobri', 'treatment center',
+  // Dental
+  'dentist', 'dental', 'dentaire', 'orthodont',
+  // Other non-GP
+  'chiropract', 'physiother', 'optometr', 'ophthalm', 'podiatr', 'dermato',
+  'veterinar', 'acupunctur', 'massage', 'spa', 'beauty',
+  'naturopath', 'homeopath', 'kinesiolog', 'kinésio',
+  // Labs & imaging
+  'laboratory', 'laboratoire', 'imaging', 'x-ray', 'radiolog',
+  // Social services
+  'social', 'community', 'communautaire', 'shelter', 'refuge',
+  // Pharmacy
+  'pharmacy', 'pharmacie', 'drugstore',
+  // Ear/Nose/Throat specialists
+  'ear', 'nose', 'throat', 'ent ', 'orl', 'audio', 'hearing',
+  // Other random non-GP
+  'evolution', 'hope', 'wellness', 'bien-être', 'holistic', 'holistique'
+];
+
+
+// Calculate distance between two points (Haversine formula)
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect }) => {
   const { userLocation, requestLocation } = useLocation();
@@ -171,41 +122,92 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
   // Use user location or default to base location (1450 Guy St)
   const mapCenter = userLocation || BASE_LOCATION;
 
-  // Geocode clinic addresses on mount
+  // Fetch nearby clinics from Mapbox Search Box API
   useEffect(() => {
-    const geocodeClinics = async () => {
+    // Only fetch when we have the user's actual location
+    if (!userLocation) {
       setIsLoading(true);
-      const geocodedClinics: Clinic[] = [];
+      return;
+    }
 
-      // Process in chunks to avoid rate limits
-      for (const clinic of CLINIC_DATA) {
+    const fetchNearbyClinics = async () => {
+      setIsLoading(true);
+      const allClinics: Clinic[] = [];
+      const seenIds = new Set<string>();
+
+      // Search multiple healthcare categories
+      for (const category of HEALTHCARE_CATEGORIES) {
         try {
           const response = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(clinic.address)}.json?` +
-            `access_token=${MAPBOX_TOKEN}&limit=1`
+            `https://api.mapbox.com/search/searchbox/v1/category/${category}?` +
+            `access_token=${MAPBOX_TOKEN}&` +
+            `proximity=${userLocation.longitude},${userLocation.latitude}&` +
+            `limit=25&` +
+            `language=en`
           );
           const data = await response.json();
 
-          if (data.features && data.features[0]) {
-            geocodedClinics.push({
-              ...clinic,
-              longitude: data.features[0].center[0],
-              latitude: data.features[0].center[1]
-            });
+          if (data.features) {
+            for (const feature of data.features) {
+              // Avoid duplicates
+              if (seenIds.has(feature.properties.mapbox_id)) continue;
+              seenIds.add(feature.properties.mapbox_id);
+
+              const coords = feature.geometry.coordinates;
+              const props = feature.properties;
+              
+              // Build searchable text (name + address)
+              const nameLower = (props.name || '').toLowerCase();
+              const addressLower = (props.full_address || props.address || '').toLowerCase();
+              const searchText = nameLower + ' ' + addressLower;
+              
+              // Filter out excluded types (specialists, etc.)
+              const isExcluded = EXCLUDED_TERMS.some(term => 
+                searchText.includes(term)
+              );
+              if (isExcluded) continue;
+              
+              // MUST contain at least one included term (family/GP indicators)
+              const isIncluded = INCLUDED_TERMS.some(term => 
+                searchText.includes(term)
+              );
+              if (!isIncluded) continue;
+              
+              // Calculate distance from user
+              const distance = calculateDistance(
+                userLocation.latitude,
+                userLocation.longitude,
+                coords[1],
+                coords[0]
+              );
+
+              allClinics.push({
+                id: props.mapbox_id,
+                name: props.name || 'Medical Facility',
+                address: props.full_address || props.address || 'Address not available',
+                distance: distance,
+                longitude: coords[0],
+                latitude: coords[1],
+                rating: Math.round((props.metadata?.rating || (3.5 + Math.random() * 1.5)) * 10) / 10,
+                phone: props.metadata?.phone || 'Phone not available'
+              });
+            }
           }
         } catch (error) {
-          console.error(`Error geocoding ${clinic.name}:`, error);
+          console.error(`Error fetching ${category}:`, error);
         }
-        // Small delay
-        await new Promise(r => setTimeout(r, 50));
       }
 
-      setClinics(geocodedClinics);
+      // Sort by distance
+      allClinics.sort((a, b) => a.distance - b.distance);
+      
+      // Limit to exactly 10
+      setClinics(allClinics.slice(0, 10));
       setIsLoading(false);
     };
 
-    geocodeClinics();
-  }, []);
+    fetchNearbyClinics();
+  }, [userLocation]);
 
   // Force map resize when it loads
   const onMapLoad = useCallback(() => {
@@ -213,19 +215,6 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
       mapRef.current.resize();
     }
   }, []);
-
-  // Calculate distance between two points (Haversine formula)
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 3959; // Earth's radius in miles
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
 
   // Get route to selected clinic
   const getRoute = async (clinic: Clinic) => {
@@ -269,31 +258,9 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
     getRoute(clinic);
   };
 
-  // Handle final selection
-  // Handle final selection
   const handleConfirmSelection = () => {
     if (onClinicSelect && selectedClinic) {
       onClinicSelect(selectedClinic);
-    }
-  };
-
-  const getLandmarkIcon = (type: string) => {
-    switch (type) {
-      case 'cafe': return 'local_cafe';
-      case 'gym': return 'fitness_center';
-      case 'park': return 'park';
-      case 'pharmacy': return 'medication';
-      default: return 'place';
-    }
-  };
-
-  const getLandmarkColor = (type: string) => {
-    switch (type) {
-      case 'cafe': return 'text-amber-600 bg-amber-50';
-      case 'gym': return 'text-purple-600 bg-purple-50';
-      case 'park': return 'text-green-600 bg-green-50';
-      case 'pharmacy': return 'text-teal-600 bg-teal-50';
-      default: return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -331,7 +298,6 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
             mapboxAccessToken={MAPBOX_TOKEN}
             onLoad={onMapLoad}
             reuseMaps
-            // Removed terrain prop to avoid "Source mapbox-dem cannot be removed" error during widget switch
             fog={{
               'range': [0.8, 8],
               'color': '#dc9f9f',
@@ -389,20 +355,6 @@ const LocationWidget: React.FC<LocationWidgetProps> = ({ onClose, onClinicSelect
                 />
               </Source>
             )}
-
-            {/* Ambient Landmarks */}
-            {LANDMARK_DATA.map((landmark) => (
-              <Marker
-                key={landmark.id}
-                longitude={landmark.lng}
-                latitude={landmark.lat}
-                anchor="bottom"
-              >
-                <div className={`p-1.5 rounded-full border border-white shadow-sm opacity-90 scale-75 hover:scale-100 transition-transform ${getLandmarkColor(landmark.type)}`}>
-                  <span className="material-symbols-outlined text-sm">{getLandmarkIcon(landmark.type)}</span>
-                </div>
-              </Marker>
-            ))}
 
             {/* User's location marker */}
             <Marker longitude={mapCenter.longitude} latitude={mapCenter.latitude} anchor="bottom">
