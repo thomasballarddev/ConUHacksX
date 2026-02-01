@@ -114,15 +114,26 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
       }
     });
 
-    // Sort days by their position in the upcomingDays array (chronological order)
+    // Sort days chronologically by creating Date objects
+    const monthToIndex: { [key: string]: number } = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
+    
     dynamicDays.sort((a, b) => {
-      const aIndex = upcomingDays.findIndex(d => d.day === a.day && d.date === a.date);
-      const bIndex = upcomingDays.findIndex(d => d.day === b.day && d.date === b.date);
-      // If not in upcomingDays, sort by date number
-      if (aIndex === -1 && bIndex === -1) {
-        return parseInt(a.date) - parseInt(b.date);
-      }
-      return aIndex - bIndex;
+      const currentYear = new Date().getFullYear();
+      const aMonth = monthToIndex[a.month] ?? 0;
+      const bMonth = monthToIndex[b.month] ?? 0;
+      
+      // Handle year rollover (if month is earlier than current, it's next year)
+      const currentMonth = new Date().getMonth();
+      const aYear = aMonth < currentMonth ? currentYear + 1 : currentYear;
+      const bYear = bMonth < currentMonth ? currentYear + 1 : currentYear;
+      
+      const aDate = new Date(aYear, aMonth, parseInt(a.date));
+      const bDate = new Date(bYear, bMonth, parseInt(b.date));
+      
+      return aDate.getTime() - bDate.getTime();
     });
   }
 
