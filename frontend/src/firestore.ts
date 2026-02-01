@@ -93,18 +93,12 @@ export const subscribeToMessages = (
 
 /**
  * Get or create the current active chat for a user
+ * Always creates a new chat on login for a fresh start
  */
 export const getOrCreateActiveChat = async (userId: string): Promise<string> => {
-  // For simplicity, we'll use a fixed "active" chat ID
-  // In production, you might want to track the active chat differently
   const activeChatRef = doc(db, 'users', userId, 'activeChat', 'current');
-  const activeChat = await getDoc(activeChatRef);
-
-  if (activeChat.exists() && activeChat.data().chatId) {
-    return activeChat.data().chatId;
-  }
-
-  // Create new chat session
+  
+  // Always create a new chat session on login
   const chatId = await createChatSession(userId);
   await setDoc(activeChatRef, { chatId });
   return chatId;
