@@ -162,6 +162,28 @@ const Settings: React.FC = () => {
             <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden divide-y divide-black/5">
               <div className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary">badge</span>
+                  </div>
+                  <span className="text-sm font-medium text-primary">Full Name</span>
+                </div>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    className="w-48 px-4 py-2.5 rounded-xl bg-gray-50 border border-black/10 text-sm text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    value={profile.personalInfo.fullName || ''}
+                    onChange={(e) => setProfile(prev => prev ? {
+                      ...prev,
+                      personalInfo: { ...prev.personalInfo, fullName: e.target.value }
+                    } : null)}
+                    placeholder="Your full name"
+                  />
+                ) : (
+                  <span className="text-sm text-gray-500 font-medium">{profile.personalInfo.fullName || '—'}</span>
+                )}
+              </div>
+              <div className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
                   <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center">
                     <span className="material-symbols-outlined text-blue-500">phone</span>
                   </div>

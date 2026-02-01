@@ -7,7 +7,7 @@ import LocationWidget from '../components/LocationWidget';
 import QuestionWidget from '../components/QuestionWidget';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { saveMessage, getOrCreateActiveChat, subscribeToMessages, createChatSession, setActiveChatId } from '../src/firestore';
+import { saveMessage, getOrCreateActiveChat, subscribeToMessages, createChatSession, setActiveChatId, getUserProfile } from '../src/firestore';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../src/firebase';
 
@@ -73,6 +73,24 @@ const Chat: React.FC = () => {
   // Widget State
   const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule' | 'question'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
+  const [userInitials, setUserInitials] = useState('U');
+
+  // Fetch user profile for initials
+  useEffect(() => {
+    if (user) {
+      // Try Firestore profile first, then fall back to Firebase Auth displayName
+      getUserProfile(user.uid).then(profile => {
+        const name = profile?.personalInfo?.fullName || user.displayName || '';
+        if (name) {
+          const names = name.trim().split(' ').filter(n => n.length > 0);
+          const initials = names.length >= 2 
+            ? (names[0][0] + names[names.length - 1][0]).toUpperCase()
+            : names[0]?.slice(0, 2).toUpperCase() || 'U';
+          setUserInitials(initials);
+        }
+      });
+    }
+  }, [user]);
 
   // Initialize Firestore chat session when user is authenticated or URL changes
   useEffect(() => {
@@ -475,7 +493,7 @@ const Chat: React.FC = () => {
                 <div className={`flex gap-4 max-w-[90%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`size-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold shadow-sm ${msg.role === 'user' ? 'bg-black text-white' : 'bg-primary text-white'
                     }`}>
-                    {msg.role === 'user' ? 'AM' : <span className="material-symbols-outlined text-base">smart_toy</span>}
+                    {msg.role === 'user' ? userInitials : 'H'}
                   </div>
 
                   <div className={`rounded-3xl p-5 shadow-sm border border-black/5 ${msg.role === 'user'
@@ -496,8 +514,8 @@ const Chat: React.FC = () => {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="flex gap-4">
-                  <div className="size-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
-                    <span className="material-symbols-outlined text-white text-base">smart_toy</span>
+                  <div className="size-9 rounded-full bg-primary flex items-center justify-center shadow-sm text-white text-xs font-bold">
+                    H
                   </div>
                   <div className="bg-white text-primary rounded-3xl rounded-tl-none p-5 shadow-sm border border-black/5 flex space-x-2 items-center">
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
