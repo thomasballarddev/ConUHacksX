@@ -188,41 +188,135 @@ router.post('/send-transcript', (req, res) => {
     }
     res.json({ success: true, received: true });
 });
-// Helper function to parse slots from various formats
+// Helper function to parse slots from the agent
+// Supported formats:
+// 1. { month: 2, day: 23, time: "5:00 PM" } - specific date
+// 2. { dayOfWeek: "Monday", time: "2:00 PM" } - next occurrence of that day
+// 3. { day: 23, time: "5:00 PM" } - day of current month
 function parseSlots(slots) {
     if (!slots || !Array.isArray(slots)) {
         return [];
     }
     const parsedSlots = [];
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const dayNamesLower = {
+        'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6,
+        'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6
+    };
+    const monthNames = {
+        'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+        'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11,
+        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'jun': 5, 'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+    };
+    // Helper to normalize time string
+    const normalizeTime = (time) => {
+        const timeMatch = time.match(/(\d{1,2}):?(\d{2})?\s*([ap]\.?m\.?)?/i);
+        if (timeMatch) {
+            const hour = parseInt(timeMatch[1]);
+            const minute = timeMatch[2] || '00';
+            const meridian = timeMatch[3] ? (timeMatch[3].toLowerCase().includes('a') ? 'AM' : 'PM') : (hour >= 12 ? 'PM' : 'AM');
+            return `${hour.toString().padStart(2, '0')}:${minute} ${meridian}`;
+        }
+        return time;
+    };
     for (const s of slots) {
-        if (typeof s === 'string') {
-            // Parse string like "Tuesday at 2pm"
-            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-            const dayMatch = s.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
-            const timeMatch = s.match(/(\d{1,2}):?(\d{2})?\s*([ap]\.?m\.?)/i);
-            const today = new Date();
-            if (timeMatch) {
-                let hour = parseInt(timeMatch[1]);
-                const minute = timeMatch[2] || '00';
-                const meridian = timeMatch[3].toLowerCase().includes('a') ? 'AM' : 'PM';
-                // Normalize 1-digit hour
-                let timeStr = '';
-                if (hour < 10 && hour > 0)
-                    timeStr = `0${hour}:${minute} ${meridian}`;
-                else
-                    timeStr = `${hour}:${minute} ${meridian}`;
-                parsedSlots.push({
-                    day: dayMatch ? dayMatch[1].substring(0, 3).toUpperCase() : days[today.getDay()],
-                    date: String(today.getDate() + 1),
-                    time: timeStr
-                });
+        try {
+            if (typeof s === 'object' && s !== null && s.time !== undefined) {
+                const currentDate = new Date();
+                let dayOfWeek;
+                let dayOfMonth;
+                const timeStr = normalizeTime(s.time);
+                // Option 1: dayOfWeek is provided (e.g., "Monday", "tuesday", "MON")
+                if (s.dayOfWeek !== undefined) {
+                    const dayOfWeekLower = s.dayOfWeek.toLowerCase();
+                    const targetDayIndex = dayNamesLower[dayOfWeekLower];
+                    if (targetDayIndex !== undefined) {
+                        // Calculate days until next occurrence of this day
+                        const currentDayIndex = currentDate.getDay();
+                        let daysUntil = targetDayIndex - currentDayIndex;
+                        if (daysUntil <= 0) {
+                            daysUntil += 7; // Next week
+                        }
+                        const targetDate = new Date(currentDate);
+                        targetDate.setDate(currentDate.getDate() + daysUntil);
+                        dayOfWeek = dayNames[targetDayIndex];
+                        dayOfMonth = targetDate.getDate();
+                        console.log(`[parseSlots] dayOfWeek "${s.dayOfWeek}" -> next ${dayOfWeek} is ${targetDate.toDateString()}`);
+                        parsedSlots.push({
+                            day: dayOfWeek,
+                            date: String(dayOfMonth),
+                            time: timeStr
+                        });
+                    }
+                    else {
+                        console.warn(`[parseSlots] Unknown dayOfWeek: "${s.dayOfWeek}"`);
+                    }
+                }
+                // Option 2: day (and optional month) is provided
+                else if (s.day !== undefined) {
+                    // Parse month (default to current month if not provided)
+                    let monthIndex;
+                    if (s.month === undefined || s.month === null) {
+                        monthIndex = currentDate.getMonth();
+                    }
+                    else if (typeof s.month === 'number') {
+                        monthIndex = s.month - 1; // Convert 1-indexed to 0-indexed
+                    }
+                    else if (typeof s.month === 'string') {
+                        const monthLower = s.month.toLowerCase();
+                        if (monthNames[monthLower] !== undefined) {
+                            monthIndex = monthNames[monthLower];
+                        }
+                        else {
+                            const parsed = parseInt(s.month);
+                            monthIndex = isNaN(parsed) ? currentDate.getMonth() : parsed - 1;
+                        }
+                    }
+                    else {
+                        monthIndex = currentDate.getMonth();
+                    }
+                    // Parse day
+                    dayOfMonth = typeof s.day === 'string' ? parseInt(s.day.replace(/\D/g, '')) : s.day;
+                    // Create date to find day of week
+                    const year = currentDate.getFullYear();
+                    const targetYear = monthIndex < currentDate.getMonth() ? year + 1 : year;
+                    const targetDate = new Date(targetYear, monthIndex, dayOfMonth);
+                    dayOfWeek = dayNames[targetDate.getDay()];
+                    console.log(`[parseSlots] month=${monthIndex + 1}, day=${dayOfMonth} -> ${dayOfWeek}, ${dayOfMonth} at ${timeStr}`);
+                    parsedSlots.push({
+                        day: dayOfWeek,
+                        date: String(dayOfMonth),
+                        time: timeStr
+                    });
+                }
             }
-            else {
-                console.warn(`[Call] Could not parse time from slot string: "${s}"`);
+            // Option 3: Legacy string format (e.g., "23rd at 5 p.m.")
+            else if (typeof s === 'string') {
+                console.warn(`[parseSlots] Received string format (deprecated): "${s}"`);
+                const dateMatch = s.match(/(\d{1,2})(st|nd|rd|th)?/i);
+                const timeMatch = s.match(/(\d{1,2}):?(\d{2})?\s*([ap]\.?m\.?)/i);
+                if (dateMatch && timeMatch) {
+                    const dayOfMonth = parseInt(dateMatch[1]);
+                    const currentDate = new Date();
+                    const targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayOfMonth);
+                    if (targetDate < currentDate) {
+                        targetDate.setMonth(targetDate.getMonth() + 1);
+                    }
+                    const dayOfWeek = dayNames[targetDate.getDay()];
+                    const hour = parseInt(timeMatch[1]);
+                    const minute = timeMatch[2] || '00';
+                    const meridian = timeMatch[3].toLowerCase().includes('a') ? 'AM' : 'PM';
+                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute} ${meridian}`;
+                    parsedSlots.push({
+                        day: dayOfWeek,
+                        date: String(dayOfMonth),
+                        time: timeStr
+                    });
+                }
             }
         }
-        else {
-            parsedSlots.push(s);
+        catch (error) {
+            console.error('[parseSlots] Error parsing slot:', s, error);
         }
     }
     return parsedSlots;
