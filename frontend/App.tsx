@@ -12,7 +12,6 @@ import HealthProfile from './pages/HealthProfile';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import SignUp from './pages/SignUp';
-import Calendar from './pages/Calendar';
 import Onboarding from './pages/Onboarding';
 
 // Inner app component that can use auth context
@@ -102,7 +101,6 @@ const AppRoutes: React.FC = () => {
       <Route path="/chat" element={<ProtectedLayout><Chat /></ProtectedLayout>} />
       <Route path="/emergency" element={<ProtectedLayout><Emergency /></ProtectedLayout>} />
       <Route path="/profile" element={<ProtectedLayout><HealthProfile /></ProtectedLayout>} />
-      <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
       <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
