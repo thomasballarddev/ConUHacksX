@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-
+import AppointmentScheduler from '../components/AppointmentScheduler';
 import LiveCallPanel from '../components/LiveCallPanel';
 import LocationWidget from '../components/LocationWidget';
 import QuestionWidget from '../components/QuestionWidget';
@@ -23,7 +23,7 @@ import { io, Socket } from 'socket.io-client';
 // WebSocket event interface (matching backend)
 interface ServerToClientEvents {
   show_clinics: (clinics: any[]) => void;
-
+  show_calendar: (slots: any[]) => void;
   call_started: (callId: string) => void;
   call_on_hold: (callId: string) => void;
   call_resumed: (callId: string) => void;
@@ -72,7 +72,7 @@ const Chat: React.FC = () => {
   const [isCompleted, setIsCompleted] = useState(false);
 
   // Widget State
-  const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'question'>('none');
+  const [activeWidget, setActiveWidget] = useState<'none' | 'location' | 'schedule' | 'question'>('none');
   const [isCallActive, setIsCallActive] = useState(false);
   const [userInitials, setUserInitials] = useState('U');
 
@@ -200,6 +200,10 @@ const Chat: React.FC = () => {
       setActiveWidget('location');
     });
 
+    socket.on('show_calendar', (slots) => {
+      setAvailableSlots(slots);
+      setActiveWidget('schedule');
+    });
 
     socket.on('call_started', () => {
       setIsCallActive(true);
@@ -459,7 +463,14 @@ const Chat: React.FC = () => {
                 <span className="material-symbols-outlined text-sm">location_on</span>
                 Locations
               </button>
-
+              <button
+                onClick={() => setActiveWidget(activeWidget === 'schedule' ? 'none' : 'schedule')}
+                className={`flex items-center gap-2 border border-black/5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-sm ${activeWidget === 'schedule' ? 'bg-primary text-white' : 'bg-white text-primary hover:bg-black hover:text-white'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-sm">calendar_month</span>
+                Schedule
+              </button>
               <button
                 onClick={async () => {
                   if (isCallActive) {
@@ -662,7 +673,15 @@ const Chat: React.FC = () => {
                   onClinicSelect={handleClinicSelect}
                 />
               )}
-
+              {activeWidget === 'schedule' && (
+                <div className="h-full overflow-y-auto">
+                  <AppointmentScheduler
+                    onClose={() => setActiveWidget('none')}
+                    onConfirm={handleAppointmentConfirm}
+                    availableSlots={availableSlots}
+                  />
+                </div>
+              )}
               {activeWidget === 'question' && (
                 <QuestionWidget
                   onClose={() => { /* Cannot close question widget, user must answer */ }}
