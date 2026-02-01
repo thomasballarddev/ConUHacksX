@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 interface AppointmentSchedulerProps {
   onClose?: () => void;
@@ -6,47 +6,127 @@ interface AppointmentSchedulerProps {
   availableSlots?: { day: string; date: string; time: string }[];
 }
 
+// Helper function to get upcoming days (14 days to cover 2 weeks for LLM flexibility)
+const getUpcomingDays = (): { day: string; date: string; month: string; fullDate: Date }[] => {
+  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const today = new Date();
+  const upcomingDays: { day: string; date: string; month: string; fullDate: Date }[] = [];
+
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    upcomingDays.push({
+      day: dayNames[date.getDay()],
+      date: date.getDate().toString(),
+      month: monthNames[date.getMonth()],
+      fullDate: date
+    });
+  }
+
+  return upcomingDays;
+};
+
+// Helper to validate/use the slot's date
+// If the slot's date exists in our window with matching day, use our calculated date
+// Otherwise, trust the backend's date (for dates outside our 14-day window)
+const findDateForSlot = (slot: { day: string; date: string }, upcomingDays: { day: string; date: string; fullDate: Date }[]): string => {
+  // Check if this exact combination exists in our upcoming days
+  const exactMatch = upcomingDays.find(d => d.day === slot.day && d.date === slot.date);
+  if (exactMatch) return exactMatch.date;
+  
+  // If the slot's date doesn't match any day in our window, trust the backend's date
+  // This handles dates that are further out (e.g., Feb 23rd when we only calculate 14 days)
+  return slot.date;
+};
+
+// Helper function to format month and year
+const getMonthYearString = (dates: { fullDate: Date }[]): string => {
+  if (dates.length === 0) return '';
+  
+  const firstDate = dates[0].fullDate;
+  const lastDate = dates[dates.length - 1].fullDate;
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  const firstMonth = monthNames[firstDate.getMonth()];
+  const lastMonth = monthNames[lastDate.getMonth()];
+  const year = firstDate.getFullYear();
+  
+  // If the week spans two months
+  if (firstMonth !== lastMonth) {
+    return `${firstMonth} - ${lastMonth} ${year}`;
+  }
+  
+  return `${firstMonth} ${year}`;
+};
+
 const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm, availableSlots = [] }) => {
   const [selectedSlot, setSelectedSlot] = useState<{ day: string; date: string; time: string } | null>(null);
+
+  // Get upcoming days (14 days to handle this week and next week)
+  const upcomingDays = useMemo(() => getUpcomingDays(), []);
+  // For the default view and month string, we use the first 7 days
+  const currentWeekDays = useMemo(() => upcomingDays.slice(0, 7), [upcomingDays]);
+  const monthYearString = useMemo(() => getMonthYearString(currentWeekDays), [currentWeekDays]);
 
   // If availableSlots are provided, use them to build the view
   const hasDynamicSlots = availableSlots && availableSlots.length > 0;
 
   const dynamicSlotsMap: Record<string, string[]> = {};
   const dynamicDaysSet = new Set<string>();
-  const dynamicDays: { day: string; date: string }[] = [];
+  const dynamicDays: { day: string; date: string; month: string }[] = [];
+
+  // Helper to get month for a date
+  const getMonthForDate = (day: string, date: string): string => {
+    const found = upcomingDays.find(d => d.day === day && d.date === date);
+    if (found) return found.month;
+    // For dates outside our window, try to calculate based on current month
+    const today = new Date();
+    const dayNum = parseInt(date);
+    // If the date is smaller than today's date, it's likely next month
+    if (dayNum < today.getDate()) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return monthNames[(today.getMonth() + 1) % 12];
+    }
+    return upcomingDays[0]?.month || 'Jan';
+  };
 
   if (hasDynamicSlots) {
     availableSlots.forEach(slot => {
-      if (!dynamicSlotsMap[slot.day]) {
-         dynamicSlotsMap[slot.day] = [];
-         // Add to days list if new
-         if (!dynamicDaysSet.has(slot.day)) {
-            dynamicDaysSet.add(slot.day);
-            dynamicDays.push({ day: slot.day, date: slot.date });
+      // Create a unique key combining day and date to handle same day in different weeks
+      const correctDate = findDateForSlot(slot, upcomingDays);
+      const slotKey = `${slot.day}-${correctDate}`;
+      
+      if (!dynamicSlotsMap[slotKey]) {
+         dynamicSlotsMap[slotKey] = [];
+         // Add to days list if new - use smart date matching
+         if (!dynamicDaysSet.has(slotKey)) {
+            dynamicDaysSet.add(slotKey);
+            const month = getMonthForDate(slot.day, correctDate);
+            dynamicDays.push({ day: slot.day, date: correctDate, month });
          }
       }
-      if (!dynamicSlotsMap[slot.day].includes(slot.time)) {
-        dynamicSlotsMap[slot.day].push(slot.time);
+      if (!dynamicSlotsMap[slotKey].includes(slot.time)) {
+        dynamicSlotsMap[slotKey].push(slot.time);
       }
     });
 
-    // Sort days based on standard week order if needed, or just keep arrival order
-    // Simple sort for demo:
-    const weekOrder = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    dynamicDays.sort((a, b) => weekOrder.indexOf(a.day) - weekOrder.indexOf(b.day));
+    // Sort days by their position in the upcomingDays array (chronological order)
+    dynamicDays.sort((a, b) => {
+      const aIndex = upcomingDays.findIndex(d => d.day === a.day && d.date === a.date);
+      const bIndex = upcomingDays.findIndex(d => d.day === b.day && d.date === b.date);
+      // If not in upcomingDays, sort by date number
+      if (aIndex === -1 && bIndex === -1) {
+        return parseInt(a.date) - parseInt(b.date);
+      }
+      return aIndex - bIndex;
+    });
   }
 
-  // Fallback / Default Data
-  const defaultDays = [
-    { day: 'SAT', date: '25' },
-    { day: 'SUN', date: '26' },
-    { day: 'MON', date: '27' },
-    { day: 'TUE', date: '28' },
-    { day: 'WED', date: '29' },
-    { day: 'THU', date: '30' },
-    { day: 'FRI', date: '31' },
-  ];
+  // Default days use the first 7 days (current week starting today)
+  const defaultDays = currentWeekDays.map(d => ({ day: d.day, date: d.date, month: d.month }));
 
   const defaultSlots: Record<string, string[]> = {
     'SAT': ['10:00 AM', '11:30 AM'],
@@ -78,7 +158,7 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
         <div>
           <h2 className="serif-font text-3xl text-primary">Schedule Appointment</h2>
           <p className="text-gray-500 text-xs font-medium mt-1">
-            January 2025 • Select an available time
+            {monthYearString} • Select an available time
           </p>
         </div>
         {onClose && (
@@ -91,18 +171,24 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
       {/* Week View with All Slots */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
         <div className="grid grid-cols-7 gap-2">
-          {days.map((dayItem) => (
-            <div key={dayItem.day} className="flex flex-col">
+          {days.map((dayItem) => {
+            // Use the correct key format for looking up slots
+            const slotKey = hasDynamicSlots ? `${dayItem.day}-${dayItem.date}` : dayItem.day;
+            const daySlots = slots[slotKey] || [];
+            
+            return (
+            <div key={`${dayItem.day}-${dayItem.date}`} className="flex flex-col">
               {/* Day Header */}
               <div className="text-center pb-2 border-b border-black/5 mb-2">
                 <div className="text-[9px] font-black uppercase tracking-wider text-gray-400">{dayItem.day}</div>
-                <div className="text-lg font-black text-primary">{dayItem.date}</div>
+                <div className="text-sm font-bold text-primary/60">{dayItem.month}</div>
+                <div className="text-xl font-black text-primary">{dayItem.date}</div>
               </div>
 
               {/* Time Slots */}
               <div className="space-y-2">
-                {slots[dayItem.day]?.map(time => {
-                  const isSelected = selectedSlot?.day === dayItem.day && selectedSlot?.time === time;
+                {daySlots.map(time => {
+                  const isSelected = selectedSlot?.day === dayItem.day && selectedSlot?.date === dayItem.date && selectedSlot?.time === time;
                   return (
                     <button
                       key={time}
@@ -118,7 +204,8 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -132,7 +219,7 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
             <div className="flex-1">
               <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Selected</p>
               <p className="font-bold text-primary text-sm">
-                {selectedSlot.day}, Jan {selectedSlot.date} at {selectedSlot.time}
+                {selectedSlot.day}, {days.find(d => d.date === selectedSlot.date && d.day === selectedSlot.day)?.month || getMonthForDate(selectedSlot.day, selectedSlot.date)} {selectedSlot.date} at {selectedSlot.time}
               </p>
             </div>
           </div>
