@@ -40,11 +40,18 @@ export const saveMessage = async (
       timestamp: serverTimestamp()
     });
     
-    // Update chat session's updatedAt
+    // Update chat session's updatedAt (and title only if not already set)
     const chatRef = doc(db, 'users', userId, 'chats', chatId);
+    const chatDoc = await getDoc(chatRef);
+    const existingTitle = chatDoc.exists() ? chatDoc.data().title : null;
+    
+    // Only set title on first user message (when title is "New Conversation" or empty)
+    const shouldSetTitle = message.role === 'user' && 
+      (!existingTitle || existingTitle === 'New Conversation');
+    
     await setDoc(chatRef, { 
       updatedAt: serverTimestamp(),
-      title: message.role === 'user' ? message.text.slice(0, 50) : undefined 
+      ...(shouldSetTitle && { title: message.text.slice(0, 50) })
     }, { merge: true });
   } catch (error) {
     console.error('Error saving message to Firestore:', error);
@@ -224,10 +231,10 @@ export const saveUserProfile = async (
     // Verify the write was successful by reading it back
     const verifySnap = await getDoc(profileRef);
     if (verifySnap.exists()) {
-      console.log('[Firestore] ✅ Verification successful! Data exists in Firestore');
+      console.log('[Firestore]  Verification successful! Data exists in Firestore');
       console.log('[Firestore] Saved data:', verifySnap.data());
     } else {
-      console.error('[Firestore] ❌ Verification FAILED! Document does not exist after write');
+      console.error('[Firestore]  Verification FAILED! Document does not exist after write');
       throw new Error('Profile write failed - document not found after save');
     }
   } catch (error) {
