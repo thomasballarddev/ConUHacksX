@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
+import GoogleCalendarModal from './GoogleCalendarModal';
 
 interface AppointmentSchedulerProps {
   onClose?: () => void;
   onConfirm?: (details: { day: string; date: string; time: string }) => void;
   availableSlots?: { day: string; date: string; time: string; month?: string }[];
+  clinicName?: string;
 }
 
 // Helper function to get upcoming days (14 days to cover 2 weeks for LLM flexibility)
@@ -34,7 +36,7 @@ const findDateForSlot = (slot: { day: string; date: string }, upcomingDays: { da
   // Check if this exact combination exists in our upcoming days
   const exactMatch = upcomingDays.find(d => d.day === slot.day && d.date === slot.date);
   if (exactMatch) return exactMatch.date;
-  
+
   // If the slot's date doesn't match any day in our window, trust the backend's date
   // This handles dates that are further out (e.g., Feb 23rd when we only calculate 14 days)
   return slot.date;
@@ -43,27 +45,29 @@ const findDateForSlot = (slot: { day: string; date: string }, upcomingDays: { da
 // Helper function to format month and year
 const getMonthYearString = (dates: { fullDate: Date }[]): string => {
   if (dates.length === 0) return '';
-  
+
   const firstDate = dates[0].fullDate;
   const lastDate = dates[dates.length - 1].fullDate;
-  
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-  
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
   const firstMonth = monthNames[firstDate.getMonth()];
   const lastMonth = monthNames[lastDate.getMonth()];
   const year = firstDate.getFullYear();
-  
+
   // If the week spans two months
   if (firstMonth !== lastMonth) {
     return `${firstMonth} - ${lastMonth} ${year}`;
   }
-  
+
   return `${firstMonth} ${year}`;
 };
 
-const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm, availableSlots = [] }) => {
+const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, onConfirm, availableSlots = [], clinicName = 'Medical Clinic' }) => {
   const [selectedSlot, setSelectedSlot] = useState<{ day: string; date: string; time: string } | null>(null);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [confirmedAppointment, setConfirmedAppointment] = useState<{ day: string; date: string; time: string; month?: string } | null>(null);
 
   // Get upcoming days (14 days to handle this week and next week)
   const upcomingDays = useMemo(() => getUpcomingDays(), []);
@@ -98,16 +102,16 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
       // Create a unique key combining day and date to handle same day in different weeks
       const correctDate = findDateForSlot(slot, upcomingDays);
       const slotKey = `${slot.day}-${correctDate}`;
-      
+
       if (!dynamicSlotsMap[slotKey]) {
-         dynamicSlotsMap[slotKey] = [];
-         // Add to days list if new - use smart date matching
-         if (!dynamicDaysSet.has(slotKey)) {
-            dynamicDaysSet.add(slotKey);
-            // Use month from slot if provided by backend, otherwise calculate
-            const month = slot.month || getMonthForDate(slot.day, correctDate);
-            dynamicDays.push({ day: slot.day, date: correctDate, month });
-         }
+        dynamicSlotsMap[slotKey] = [];
+        // Add to days list if new - use smart date matching
+        if (!dynamicDaysSet.has(slotKey)) {
+          dynamicDaysSet.add(slotKey);
+          // Use month from slot if provided by backend, otherwise calculate
+          const month = slot.month || getMonthForDate(slot.day, correctDate);
+          dynamicDays.push({ day: slot.day, date: correctDate, month });
+        }
       }
       if (!dynamicSlotsMap[slotKey].includes(slot.time)) {
         dynamicSlotsMap[slotKey].push(slot.time);
@@ -119,20 +123,20 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
       'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
       'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
     };
-    
+
     dynamicDays.sort((a, b) => {
       const currentYear = new Date().getFullYear();
       const aMonth = monthToIndex[a.month] ?? 0;
       const bMonth = monthToIndex[b.month] ?? 0;
-      
+
       // Handle year rollover (if month is earlier than current, it's next year)
       const currentMonth = new Date().getMonth();
       const aYear = aMonth < currentMonth ? currentYear + 1 : currentYear;
       const bYear = bMonth < currentMonth ? currentYear + 1 : currentYear;
-      
+
       const aDate = new Date(aYear, aMonth, parseInt(a.date));
       const bDate = new Date(bYear, bMonth, parseInt(b.date));
-      
+
       return aDate.getTime() - bDate.getTime();
     });
   }
@@ -159,6 +163,10 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
 
   const handleConfirm = () => {
     if (selectedSlot && onConfirm) {
+      // Get the month for the selected slot
+      const month = days.find(d => d.date === selectedSlot.date && d.day === selectedSlot.day)?.month || getMonthForDate(selectedSlot.day, selectedSlot.date);
+      setConfirmedAppointment({ ...selectedSlot, month });
+      setShowCalendarModal(true);
       onConfirm(selectedSlot);
     }
   };
@@ -187,35 +195,35 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
             // Use the correct key format for looking up slots
             const slotKey = hasDynamicSlots ? `${dayItem.day}-${dayItem.date}` : dayItem.day;
             const daySlots = slots[slotKey] || [];
-            
-            return (
-            <div key={`${dayItem.day}-${dayItem.date}`} className="flex flex-col">
-              {/* Day Header */}
-              <div className="text-center pb-2 border-b border-black/5 mb-2">
-                <div className="text-[9px] font-black uppercase tracking-wider text-gray-400">{dayItem.day}</div>
-                <div className="text-sm font-bold text-primary/60">{dayItem.month}</div>
-                <div className="text-xl font-black text-primary">{dayItem.date}</div>
-              </div>
 
-              {/* Time Slots */}
-              <div className="space-y-2">
-                {daySlots.map(time => {
-                  const isSelected = selectedSlot?.day === dayItem.day && selectedSlot?.date === dayItem.date && selectedSlot?.time === time;
-                  return (
-                    <button
-                      key={time}
-                      onClick={() => handleSelectSlot(dayItem.day, dayItem.date, time)}
-                      className={`w-full py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${isSelected
+            return (
+              <div key={`${dayItem.day}-${dayItem.date}`} className="flex flex-col">
+                {/* Day Header */}
+                <div className="text-center pb-2 border-b border-black/5 mb-2">
+                  <div className="text-[9px] font-black uppercase tracking-wider text-gray-400">{dayItem.day}</div>
+                  <div className="text-sm font-bold text-primary/60">{dayItem.month}</div>
+                  <div className="text-xl font-black text-primary">{dayItem.date}</div>
+                </div>
+
+                {/* Time Slots */}
+                <div className="space-y-2">
+                  {daySlots.map(time => {
+                    const isSelected = selectedSlot?.day === dayItem.day && selectedSlot?.date === dayItem.date && selectedSlot?.time === time;
+                    return (
+                      <button
+                        key={time}
+                        onClick={() => handleSelectSlot(dayItem.day, dayItem.date, time)}
+                        className={`w-full py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${isSelected
                           ? 'bg-primary text-white shadow-lg scale-105'
                           : 'bg-white border border-black/5 text-primary hover:border-primary hover:scale-102'
-                        }`}
-                    >
-                      {time}
-                    </button>
-                  );
-                })}
+                          }`}
+                      >
+                        {time}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
             );
           })}
         </div>
@@ -245,13 +253,21 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ onClose, on
           onClick={handleConfirm}
           disabled={!selectedSlot}
           className={`w-full py-4 rounded-2xl text-sm font-black transition-all ${selectedSlot
-              ? 'bg-primary text-white shadow-lg shadow-black/5 hover:bg-black active:scale-[0.98]'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            ? 'bg-primary text-white shadow-lg shadow-black/5 hover:bg-black active:scale-[0.98]'
+            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
         >
           Confirm Appointment
         </button>
       </div>
+
+      {/* Google Calendar Modal */}
+      <GoogleCalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        appointment={confirmedAppointment}
+        clinicName={clinicName}
+      />
     </div>
   );
 };

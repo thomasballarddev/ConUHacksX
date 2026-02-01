@@ -5,6 +5,7 @@ import AppointmentScheduler from '../components/AppointmentScheduler';
 import LiveCallPanel from '../components/LiveCallPanel';
 import LocationWidget from '../components/LocationWidget';
 import QuestionWidget from '../components/QuestionWidget';
+import GoogleCalendarModal from '../components/GoogleCalendarModal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { saveMessage, getOrCreateActiveChat, subscribeToMessages, createChatSession, setActiveChatId, getUserProfile } from '../src/firestore';
@@ -83,7 +84,7 @@ const Chat: React.FC = () => {
         const name = profile?.personalInfo?.fullName || user.displayName || '';
         if (name) {
           const names = name.trim().split(' ').filter(n => n.length > 0);
-          const initials = names.length >= 2 
+          const initials = names.length >= 2
             ? (names[0][0] + names[names.length - 1][0]).toUpperCase()
             : names[0]?.slice(0, 2).toUpperCase() || 'U';
           setUserInitials(initials);
@@ -179,6 +180,11 @@ const Chat: React.FC = () => {
   const [agentNeedsInput, setAgentNeedsInput] = useState(false);
   const [agentQuestion, setAgentQuestion] = useState('');
   const [agentContext, setAgentContext] = useState('');
+
+  // Google Calendar modal state
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [confirmedAppointment, setConfirmedAppointment] = useState<{ day: string; date: string; time: string; month?: string } | null>(null);
+  const [selectedClinicName, setSelectedClinicName] = useState('Medical Clinic');
 
   useEffect(() => {
     // 1. Connect to Backend WebSocket
@@ -347,6 +353,7 @@ const Chat: React.FC = () => {
   const handleClinicSelect = async (clinic: { name: string; phone?: string }) => {
     setActiveWidget('none');
     setIsCallActive(true);
+    setSelectedClinicName(clinic.name);
     setMessages(prev => [...prev,
     { role: 'model', text: `Calling ${clinic.name} to schedule your appointment... Our AI assistant will speak with the receptionist on your behalf.` }
     ]);
@@ -373,6 +380,17 @@ const Chat: React.FC = () => {
   const handleAppointmentConfirm = async (details: { day: string; date: string; time: string }) => {
     setActiveWidget('none');
     const appointmentText = `${details.day}, the ${details.date} at ${details.time}`;
+
+    // Calculate month for the appointment
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const today = new Date();
+    const dayNum = parseInt(details.date);
+    // If the date is smaller than today's date, it's likely next month
+    const month = monthNames[dayNum < today.getDate() ? (today.getMonth() + 1) % 12 : today.getMonth()];
+
+    // Show the Google Calendar modal
+    setConfirmedAppointment({ ...details, month });
+    setShowCalendarModal(true);
 
     // Send selection to active call
     try {
@@ -695,6 +713,14 @@ const Chat: React.FC = () => {
           onConfirm={handleEmergencyConfirm}
         />
       )}
+
+      {/* Google Calendar Modal */}
+      <GoogleCalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        appointment={confirmedAppointment}
+        clinicName={selectedClinicName}
+      />
     </div>
   );
 };
